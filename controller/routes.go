@@ -38,7 +38,7 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	sessiondId := uuid.New().String()
 	jwtToken, err := generateJWT(sessiondId)
 	if err != nil {
-		log.Printf("couldn't generate JWT auth token.\nError: %v", err)
+		log.Fatalf("couldn't generate JWT auth token.\nError: %v\n", err)
 	}
 	w.Header().Add("Authorization", jwtToken)
 	w.Header().Add("Session-Id", sessiondId)
@@ -76,7 +76,7 @@ func HandleApply(w http.ResponseWriter, r *http.Request) {
 	for _, leave := range splitLeaves {
 		leaveSlices, err := utils.RemoveWeekendsFromLeaveData(leave)
 		if err != nil {
-			log.Println("There was an error while removing weekends from the applied leave. Err : ", err)
+			log.Fatalln("There was an error while removing weekends from the applied leave. Err : ", err)
 		}
 
 		leavesLackingWeekend = append(leavesLackingWeekend, leaveSlices...)
@@ -129,6 +129,10 @@ func HandleViewLeaves(w http.ResponseWriter, r *http.Request) {
 		{Key: "username", Value: user.Username},
 	})
 	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if data == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -153,56 +157,40 @@ func ViewTeamLeaves(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 // ============================================================================
 func HandleViewLeaveApplications(w http.ResponseWriter, r *http.Request) {
-	var approver db.User
-	err := json.NewDecoder(r.Body).Decode(&approver)
+	var filter ViewApplications
+	err := json.NewDecoder(r.Body).Decode(&filter)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	data, err := database.Find("leaves", bson.D{
-		{Key: "approver", Value: approver.Username},
-	})
-	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
+	var pipeline mongo.Pipeline
+	// Always filter by approver
+	pipeline = append(pipeline, bson.D{{Key: "$match", Value: bson.D{
+		{Key: "approver", Value: filter.ApproverName},
+	}}})
 
-	leaveApplications := utils.ReturnLeaves(data)
-	response, _ := json.MarshalIndent(leaveApplications, "", " ")
-	w.Write(response)
-}
-
-// ============================================================================
-// ============================================================================
-// handle `view leave with filtered approval`
-// ============================================================================
-// ============================================================================
-func HandleViewLeavesBasedOnApproval(w http.ResponseWriter, r *http.Request) {
-	var applicationFilter ViewApplications
-	err := json.NewDecoder(r.Body).Decode(&applicationFilter)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	data, err := database.Aggregate("leaves", mongo.Pipeline{
-		{{Key: "$match", Value: bson.D{
-			{Key: "approver", Value: applicationFilter.ApproverName},
-		}}},
-		{{Key: "$addFields", Value: bson.D{
+	// If IsLeaveAprroved is provided, filter by it
+	if filter.IsLeaveAprroved != nil {
+		pipeline = append(pipeline, bson.D{{Key: "$addFields", Value: bson.D{
 			{Key: "leaves", Value: bson.D{
 				{Key: "$filter", Value: bson.D{
 					{Key: "input", Value: "$leaves"},
 					{Key: "as", Value: "leave"},
 					{Key: "cond", Value: bson.D{
-						{Key: "$eq", Value: bson.A{"$$leave.approved", true}},
+						{Key: "$eq", Value: bson.A{"$$leave.approved", *filter.IsLeaveAprroved}},
 					}},
 				}},
 			}},
-		}}},
-	})
+		}}})
+	}
+
+	data, err := database.Aggregate("leaves", pipeline)
 	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	if data == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -227,7 +215,7 @@ func HandleLeaveApproval(w http.ResponseWriter, r *http.Request) {
 	updatedResult, err := database.UpdateOne("leaves", bson.D{
 		{Key: "username", Value: leaveData.Username}, {
 			Key: "leaves", Value: bson.D{{
-				Key: "$elemMatch", Value: bson.D{{Key: "id", Value: leaveData.Leaves[0].Id}}}}},
+				Key: "$elemMatch", Value: bson.D{{Key: "id", Value: leaveData.Leaves[0].Id}}}}}, //possible bug, why only matching for Leaves[0], why not for other IDs?
 	}, bson.D{
 		{Key: "$set",
 			Value: bson.D{

@@ -6,6 +6,6 @@ package controller
 // ============================================================================
 // ============================================================================
 type ViewApplications struct {
-	ApproverName    string `bson:"aprroverName" json:"aprroverName"`
-	IsLeaveAprroved bool   `bson:"isLeaveAprroved" json:"isLeaveAprroved"`
+	ApproverName    string `bson:"approverName" json:"approverName"`
+	IsLeaveAprroved *bool  `bson:"isLeaveAprroved" json:"isLeaveAprroved"`
 }
