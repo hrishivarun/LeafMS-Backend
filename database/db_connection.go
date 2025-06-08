@@ -115,3 +115,19 @@ func (db Database) UpdateOne(collectionName string, filter bson.D, update interf
 	}
 	return res, nil
 }
+
+func (db Database) Aggregate(collectioName string, pipeline mongo.Pipeline) ([]bson.Raw, error) {
+	var data []bson.Raw
+	collection := db.Database.Collection((collectioName))
+	resultCursor, err := collection.Aggregate(db.Context, pipeline)
+	if err != nil {
+		log.Fatal("Could not perform aggregate operation with pipeline:- ", pipeline)
+		return nil, err
+	}
+
+	if err = resultCursor.All(db.Context, &data); err != nil {
+		log.Panic("Could not complete the Find query in the database. Error:-\n\t", err)
+		return nil, err
+	}
+	return data, nil
+}

@@ -10,9 +10,14 @@ import (
 
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
+// ============================================================================
+// ============================================================================
 // handle `login`
+// ============================================================================
+// ============================================================================
 func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	var user db.User
@@ -42,7 +47,11 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	w.Write(response)
 }
 
+// ============================================================================
+// ============================================================================
 // handle `apply leaves`
+// ============================================================================
+// ============================================================================
 func HandleApply(w http.ResponseWriter, r *http.Request) {
 	var leaveApplication db.Leaves
 	err := json.NewDecoder(r.Body).Decode(&leaveApplication)
@@ -103,7 +112,11 @@ func HandleApply(w http.ResponseWriter, r *http.Request) {
 	w.Write(response)
 }
 
+// ============================================================================
+// ============================================================================
 // handle `view leaves`
+// ============================================================================
+// ============================================================================
 func HandleViewLeaves(w http.ResponseWriter, r *http.Request) {
 	var user db.User
 	err := json.NewDecoder(r.Body).Decode(&user)
@@ -125,7 +138,20 @@ func HandleViewLeaves(w http.ResponseWriter, r *http.Request) {
 	w.Write(response)
 }
 
-// hanlde `view leave applications`
+// ============================================================================
+// ============================================================================
+// handle `view team's leaves`
+// ============================================================================
+// ============================================================================
+func ViewTeamLeaves(w http.ResponseWriter, r *http.Request) {
+
+}
+
+// ============================================================================
+// ============================================================================
+// handle `view leave applications`
+// ============================================================================
+// ============================================================================
 func HandleViewLeaveApplications(w http.ResponseWriter, r *http.Request) {
 	var approver db.User
 	err := json.NewDecoder(r.Body).Decode(&approver)
@@ -147,7 +173,50 @@ func HandleViewLeaveApplications(w http.ResponseWriter, r *http.Request) {
 	w.Write(response)
 }
 
+// ============================================================================
+// ============================================================================
+// handle `view leave with filtered approval`
+// ============================================================================
+// ============================================================================
+func HandleViewLeavesBasedOnApproval(w http.ResponseWriter, r *http.Request) {
+	var applicationFilter ViewApplications
+	err := json.NewDecoder(r.Body).Decode(&applicationFilter)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	data, err := database.Aggregate("leaves", mongo.Pipeline{
+		{{Key: "$match", Value: bson.D{
+			{Key: "approver", Value: applicationFilter.ApproverName},
+		}}},
+		{{Key: "$addFields", Value: bson.D{
+			{Key: "leaves", Value: bson.D{
+				{Key: "$filter", Value: bson.D{
+					{Key: "input", Value: "$leaves"},
+					{Key: "as", Value: "leave"},
+					{Key: "cond", Value: bson.D{
+						{Key: "$eq", Value: bson.A{"$$leave.approved", true}},
+					}},
+				}},
+			}},
+		}}},
+	})
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	leaveApplications := utils.ReturnLeaves(data)
+	response, _ := json.MarshalIndent(leaveApplications, "", " ")
+	w.Write(response)
+}
+
+// ============================================================================
+// ============================================================================
 // handle `leaves approval`
+// ============================================================================
+// ============================================================================
 func HandleLeaveApproval(w http.ResponseWriter, r *http.Request) {
 	var leaveData db.Leaves
 	if err := json.NewDecoder(r.Body).Decode(&leaveData); err != nil {
