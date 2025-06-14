@@ -47,7 +47,7 @@ func verifyToken(tokenString string, username string) error {
 }
 
 // function to validate the db.user
-func validateCred(userToAuthorize db.User) interface{} {
+func validateCred(userToAuthorize db.User) (db.User, db.UserLogin) {
 	var login db.UserLogin
 	data, err := database.FindOne("employees", bson.D{
 		{Key: "username", Value: userToAuthorize.Username},
@@ -55,7 +55,7 @@ func validateCred(userToAuthorize db.User) interface{} {
 	if err != nil {
 		login.Login = false
 		log.Fatal("Failed authentication. Error:- \n\t", err)
-		return login
+		return db.User{}, login
 	}
 
 	var user db.User
@@ -66,12 +66,12 @@ func validateCred(userToAuthorize db.User) interface{} {
 
 	if user.Username == "" {
 		login.Login = false
-		return login
+		return user, login
 	} else {
 		login.Username = user.Username
 		login.Login = true
 	}
-	return login
+	return user, login
 }
 
 // MIDDLEWARES!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

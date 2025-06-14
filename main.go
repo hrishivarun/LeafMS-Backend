@@ -21,7 +21,7 @@ func main() {
 	// authRoute.Use(ctrlr.HandleAuth)
 	authRoute.HandleFunc("/apply", ctrlr.HandleApply).Methods("PUT")
 	authRoute.HandleFunc("/leaves", ctrlr.HandleViewLeaves).Methods("GET")
-	// authRoute.HandleFunc("/team-leaves", ctrlr.Ha)
+	authRoute.HandleFunc("/team-leaves", ctrlr.HandleViewTeamLeaves).Methods(("GET"))
 	authRoute.HandleFunc("/applications", ctrlr.HandleViewLeaveApplications).Methods(("GET"))
 	authRoute.HandleFunc("/approve", ctrlr.HandleLeaveApproval).Methods("PATCH")
 	authRoute.HandleFunc("/holidays", ctrlr.HandleViewHolidays).Methods("GET")

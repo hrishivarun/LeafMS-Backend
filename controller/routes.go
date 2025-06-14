@@ -13,6 +13,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+var userInfo db.User
+
 // ============================================================================
 // ============================================================================
 // handle `login`
@@ -32,7 +34,8 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//Authenticate the user credentials with the database
-	result := validateCred(user).(db.UserLogin)
+	user, loginInfo := validateCred(user)
+	userInfo = user //saving userInfo
 	log.Println("validated cred")
 
 	sessiondId := uuid.New().String()
@@ -43,7 +46,7 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Authorization", jwtToken)
 	w.Header().Add("Session-Id", sessiondId)
 
-	response, _ := json.MarshalIndent(result, "", "	")
+	response, _ := json.MarshalIndent(loginInfo, "", "	")
 	w.Write(response)
 }
 
@@ -126,8 +129,7 @@ func HandleViewLeaves(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data, err := database.Find("leaves", bson.D{
-		{Key: "username", Value: user.Username},
-	})
+		{Key: "username", Value: user.Username}})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -147,8 +149,47 @@ func HandleViewLeaves(w http.ResponseWriter, r *http.Request) {
 // handle `view team's leaves`
 // ============================================================================
 // ============================================================================
-func ViewTeamLeaves(w http.ResponseWriter, r *http.Request) {
+func HandleViewTeamLeaves(w http.ResponseWriter, r *http.Request) {
+	var user db.User
+	err := json.NewDecoder(r.Body).Decode(&user)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
+	if (userInfo == db.User{} || userInfo.Username != user.Username) {
+		w.WriteHeader((http.StatusUnauthorized))
+		return
+	}
+
+	teamPeepsRaw, err := database.Find("employees", bson.D{
+		{Key: "team", Value: user.Team}})
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	teamPeeps := utils.ReturnUsers(teamPeepsRaw)
+	var peepsUsername []string
+	for _, peep := range teamPeeps {
+		peepsUsername = append(peepsUsername, peep.Username)
+	}
+
+	data, err := database.Find("leaves", bson.D{
+		{Key: "username", Value: bson.D{{Key: "$in", Value: peepsUsername}}}})
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if data == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	leaves := utils.ReturnLeaves(data)
+	response, _ := json.MarshalIndent(leaves, "", "	")
+	w.Write(response)
 }
 
 // ============================================================================
