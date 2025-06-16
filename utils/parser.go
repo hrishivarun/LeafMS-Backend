@@ -4,17 +4,17 @@ import (
 	"log"
 	"strconv"
 
-	db "LeafMS-BackEnd/database"
+	models "LeafMS-BackEnd/models"
 )
 
-func ParseStringToDate(date string) (db.Datetime, error) {
+func ParseStringToDate(date string) (models.Datetime, error) {
 	const (
 		Date = iota
 		Month
 	)
 
 	var valToInsert = Date
-	var parsedDate db.Datetime
+	var parsedDate models.Datetime
 	var currParserVal = ""
 	var index = 0
 
@@ -25,7 +25,7 @@ func ParseStringToDate(date string) (db.Datetime, error) {
 			parsedInt, err := strconv.Atoi(currParserVal)
 			if err != nil {
 				log.Println("Encountered error while parsing the date. Error:	", err)
-				return db.Datetime{}, err
+				return models.Datetime{}, err
 			}
 
 			if valToInsert == Date {
@@ -42,17 +42,17 @@ func ParseStringToDate(date string) (db.Datetime, error) {
 	parsedInt, err := strconv.Atoi(currParserVal)
 	if err != nil {
 		log.Println("Encountered error while parsing the date. Error:	", err)
-		return db.Datetime{}, err
+		return models.Datetime{}, err
 	}
 	parsedDate.Year = parsedInt
 
 	if err := FeasibleDate(parsedDate); err != nil {
-		return db.Datetime{}, err
+		return models.Datetime{}, err
 	}
 	return parsedDate, nil
 }
 
-func ParseDateToString(date db.Datetime) string {
+func ParseDateToString(date models.Datetime) string {
 	dateInStr := ""
 	dateInStr += strconv.Itoa(date.Day) + string('/')
 	dateInStr += strconv.Itoa(date.Month) + string('/')

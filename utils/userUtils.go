@@ -1,13 +1,13 @@
 package utils
 
 import (
-	db "LeafMS-BackEnd/database"
+	models "LeafMS-BackEnd/models"
 	"fmt"
 	"strings"
 )
 
-func InterFaceToUser(user interface{}) db.User {
-	var result db.User
+func InterFaceToUser(user interface{}) models.Employee {
+	var result models.Employee
 	str := fmt.Sprintf("%v", user)
 	for len(str) > 4 {
 		i1 := strings.Index(str, "{")
@@ -20,14 +20,14 @@ func InterFaceToUser(user interface{}) db.User {
 	return result
 }
 
-func setUserVal(temp2 []string, user db.User) db.User {
+func setUserVal(temp2 []string, user models.Employee) models.Employee {
 	switch temp2[0] {
 	case "username":
 		user.Username = temp2[1]
 	case "password":
 		user.Password = temp2[1]
 	case "name":
-		user.Name = temp2[1]
+		user.FirstName = temp2[1]
 	case "team":
 		user.Team = temp2[1]
 	case "designation":

@@ -2,6 +2,7 @@ package utils
 
 import (
 	db "LeafMS-BackEnd/database"
+	models "LeafMS-BackEnd/models"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -27,7 +28,7 @@ func PersistPublicHolidays(year int, countryCode string) {
 		return
 	}
 
-	var holidaysJson db.HolidayApiResponse
+	var holidaysJson models.HolidayApiResponse
 	if err := json.NewDecoder(resp.Body).Decode(&holidaysJson); err != nil {
 		log.Printf("Error decoding response: %v\n", err)
 		return

@@ -5,15 +5,15 @@ import (
 	"log"
 	"net/http"
 
-	db "LeafMS-BackEnd/database"
+	models "LeafMS-BackEnd/models"
+	"LeafMS-BackEnd/service"
 	"LeafMS-BackEnd/utils"
 
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var userInfo db.User
+var userInfo models.Employee
 
 // ============================================================================
 // ============================================================================
@@ -22,7 +22,7 @@ var userInfo db.User
 // ============================================================================
 func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
-	var user db.User
+	var user models.Employee
 
 	log.Println("started login api")
 	err := json.NewDecoder(r.Body).Decode(&user)
@@ -52,59 +52,25 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 // ============================================================================
 // ============================================================================
-// handle `apply leaves`
+// handle `leave apply`
 // ============================================================================
 // ============================================================================
 func HandleApply(w http.ResponseWriter, r *http.Request) {
-	var leaveApplication db.Leaves
+	var leaveApplication models.MetaLeaveInfo
 	err := json.NewDecoder(r.Body).Decode(&leaveApplication)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
-	var splitLeaves []db.LeaveData
-	for _, leave := range leaveApplication.Leaves {
-		leaveSlices, err := utils.RemoveHolidayFromLeaveData(leave)
-		if err != nil {
-			log.Println("Could not remove the holidays from the leave applied. Err : ", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		splitLeaves = append(splitLeaves, leaveSlices...)
-	}
-
-	var leavesLackingWeekend []db.LeaveData
-	for _, leave := range splitLeaves {
-		leaveSlices, err := utils.RemoveWeekendsFromLeaveData(leave)
-		if err != nil {
-			log.Fatalln("There was an error while removing weekends from the applied leave. Err : ", err)
-		}
-
-		leavesLackingWeekend = append(leavesLackingWeekend, leaveSlices...)
-	}
-
-	leaveApplication.Leaves = leavesLackingWeekend
-
-	result, err := database.UpdateOne("leaves", bson.D{
-		{Key: "username", Value: leaveApplication.Username},
-	}, bson.D{
-		{Key: "$push", Value: bson.D{
-			{Key: "leaves", Value: bson.D{
-				{Key: "$each", Value: leaveApplication.Leaves},
-			}},
-		}},
-	})
+	result, err := service.ApplyForLeave(leaveApplication)
 	if err != nil {
-		log.Println("Encountered error while persisting applied leaves in Database. Err : ", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	if result.MatchedCount == 0 {
 		w.WriteHeader(http.StatusNotFound)
-		response, _ := json.Marshal("No User with the username: " + leaveApplication.Username + " exists.")
+		response, _ := json.Marshal("No Employee with the username: " + leaveApplication.Username + " exists.")
 		w.Write(response)
 		return
 	} else {
@@ -121,7 +87,7 @@ func HandleApply(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 // ============================================================================
 func HandleViewLeaves(w http.ResponseWriter, r *http.Request) {
-	var user db.User
+	var user models.Employee
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -150,44 +116,26 @@ func HandleViewLeaves(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 // ============================================================================
 func HandleViewTeamLeaves(w http.ResponseWriter, r *http.Request) {
-	var user db.User
+	var user models.Employee
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	if (userInfo == db.User{} || userInfo.Username != user.Username) {
+	if (userInfo == models.Employee{} || userInfo.Username != user.Username) {
 		w.WriteHeader((http.StatusUnauthorized))
 		return
 	}
 
-	teamPeepsRaw, err := database.Find("employees", bson.D{
-		{Key: "team", Value: user.Team}})
-
+	leaves, err := service.ViewTeamLeaveInfo(user.Team)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return
 	}
-	teamPeeps := utils.ReturnUsers(teamPeepsRaw)
-	var peepsUsername []string
-	for _, peep := range teamPeeps {
-		peepsUsername = append(peepsUsername, peep.Username)
-	}
-
-	data, err := database.Find("leaves", bson.D{
-		{Key: "username", Value: bson.D{{Key: "$in", Value: peepsUsername}}}})
-
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if data == nil {
+	if len(leaves) == 0 {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-
-	leaves := utils.ReturnLeaves(data)
 	response, _ := json.MarshalIndent(leaves, "", "	")
 	w.Write(response)
 }
@@ -198,46 +146,23 @@ func HandleViewTeamLeaves(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 // ============================================================================
 func HandleViewLeaveApplications(w http.ResponseWriter, r *http.Request) {
-	var filter ViewApplications
+	var filter models.ViewApplications
 	err := json.NewDecoder(r.Body).Decode(&filter)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	var pipeline mongo.Pipeline
-	// Always filter by approver
-	pipeline = append(pipeline, bson.D{{Key: "$match", Value: bson.D{
-		{Key: "approver", Value: filter.ApproverName},
-	}}})
-
-	// If IsLeaveAprroved is provided, filter by it
-	if filter.IsLeaveAprroved != nil {
-		pipeline = append(pipeline, bson.D{{Key: "$addFields", Value: bson.D{
-			{Key: "leaves", Value: bson.D{
-				{Key: "$filter", Value: bson.D{
-					{Key: "input", Value: "$leaves"},
-					{Key: "as", Value: "leave"},
-					{Key: "cond", Value: bson.D{
-						{Key: "$eq", Value: bson.A{"$$leave.approved", *filter.IsLeaveAprroved}},
-					}},
-				}},
-			}},
-		}}})
+	if (userInfo == models.Employee{} || userInfo.Username != filter.ApproverName) {
+		w.WriteHeader((http.StatusUnauthorized))
+		return
 	}
-
-	data, err := database.Aggregate("leaves", pipeline)
+	applications, err := service.ViewLeaveApplications(filter)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if data == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	leaveApplications := utils.ReturnLeaves(data)
-	response, _ := json.MarshalIndent(leaveApplications, "", " ")
+	response, _ := json.MarshalIndent(applications, "", " ")
 	w.Write(response)
 }
 
@@ -247,23 +172,16 @@ func HandleViewLeaveApplications(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 // ============================================================================
 func HandleLeaveApproval(w http.ResponseWriter, r *http.Request) {
-	var leaveData db.Leaves
-	if err := json.NewDecoder(r.Body).Decode(&leaveData); err != nil {
+	var leaveApplications models.MetaLeaveInfo
+	if err := json.NewDecoder(r.Body).Decode(&leaveApplications); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
-	updatedResult, err := database.UpdateOne("leaves", bson.D{
-		{Key: "username", Value: leaveData.Username}, {
-			Key: "leaves", Value: bson.D{{
-				Key: "$elemMatch", Value: bson.D{{Key: "id", Value: leaveData.Leaves[0].Id}}}}}, //possible bug, why only matching for Leaves[0], why not for other IDs?
-	}, bson.D{
-		{Key: "$set",
-			Value: bson.D{
-				{Key: "leaves.$.approved", Value: leaveData.Leaves[0].Approved},
-			},
-		},
-	})
+	if (userInfo == models.Employee{} || userInfo.Username != leaveApplications.Approver) {
+		w.WriteHeader((http.StatusUnauthorized))
+		return
+	}
+	updatedResult, err := service.ApproveLeave(leaveApplications)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -271,26 +189,25 @@ func HandleLeaveApproval(w http.ResponseWriter, r *http.Request) {
 
 	response, _ := json.MarshalIndent(updatedResult, "", "	")
 	w.Write(response)
-
 }
 
+// ============================================================================
+// ============================================================================
+// handle `view holidays`
+// ============================================================================
+// ============================================================================
 func HandleViewHolidays(w http.ResponseWriter, r *http.Request) {
-	var holidayArgs db.HolidayArgs
-	if err := json.NewDecoder(r.Body).Decode(&holidayArgs); err != nil {
+	var filter models.HolidaysFilter
+	if err := json.NewDecoder(r.Body).Decode(&filter); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	holidaysBson, err := database.Find("publicHolidays", bson.D{
-		{Key: "country.id", Value: holidayArgs.Country},
-		{Key: "date.datetime.year", Value: holidayArgs.Year},
-	})
+	holidays, err := service.ViewHolidays(filter)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-
-	holidays := utils.ReturnHolidays(holidaysBson)
 
 	serverRes, _ := json.MarshalIndent(holidays, "", "	")
 	w.Write(serverRes)

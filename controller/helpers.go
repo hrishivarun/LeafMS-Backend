@@ -2,6 +2,7 @@ package controller
 
 import (
 	db "LeafMS-BackEnd/database"
+	models "LeafMS-BackEnd/models"
 	"fmt"
 	"log"
 	"net/http"
@@ -46,19 +47,19 @@ func verifyToken(tokenString string, username string) error {
 	return nil
 }
 
-// function to validate the db.user
-func validateCred(userToAuthorize db.User) (db.User, db.UserLogin) {
-	var login db.UserLogin
+// function to validate the models.user
+func validateCred(userToAuthorize models.Employee) (models.Employee, models.UserLogin) {
+	var login models.UserLogin
 	data, err := database.FindOne("employees", bson.D{
 		{Key: "username", Value: userToAuthorize.Username},
 		{Key: "password", Value: userToAuthorize.Password}})
 	if err != nil {
 		login.Login = false
 		log.Fatal("Failed authentication. Error:- \n\t", err)
-		return db.User{}, login
+		return models.Employee{}, login
 	}
 
-	var user db.User
+	var user models.Employee
 	err = bson.Unmarshal(data, &user)
 	if err != nil {
 		log.Fatal("Couldn't unwrap the user data recieved from mongoDB.\nError:-\n\n", err)

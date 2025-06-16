@@ -1,7 +1,7 @@
 package utils
 
 import (
-	db "LeafMS-BackEnd/database"
+	models "LeafMS-BackEnd/models"
 	"errors"
 	"log"
 	"sort"
@@ -46,7 +46,7 @@ func isLeapYear(year int) bool {
 	return false
 }
 
-func FeasibleDate(date db.Datetime) error {
+func FeasibleDate(date models.Datetime) error {
 	day := date.Day
 	month := date.Month
 	year := date.Year
@@ -64,7 +64,7 @@ func FeasibleDate(date db.Datetime) error {
 	return nil
 }
 
-func DateToWeekday(date db.Datetime) (int, string) {
+func DateToWeekday(date models.Datetime) (int, string) {
 	year := date.Year - 2000
 	year += (year / 4) + 7
 
@@ -79,7 +79,7 @@ func DateToWeekday(date db.Datetime) (int, string) {
 	return year, WeekDays[year]
 }
 
-func rollLeaveBackwardOneDay(date db.Datetime) db.Datetime {
+func rollLeaveBackwardOneDay(date models.Datetime) models.Datetime {
 	if date.Day == 1 {
 		if date.Month == 1 {
 			date.Year -= 1
@@ -97,7 +97,7 @@ func rollLeaveBackwardOneDay(date db.Datetime) db.Datetime {
 	return date
 }
 
-func rollLeaveForwardOneDay(date db.Datetime) db.Datetime {
+func rollLeaveForwardOneDay(date models.Datetime) models.Datetime {
 	if date.Day == daysInMonth[date.Month] ||
 		(date.Month == 2 && isLeapYear(date.Year) && date.Day == daysInMonth[date.Month]+1) {
 		date.Day = 1
@@ -113,7 +113,7 @@ func rollLeaveForwardOneDay(date db.Datetime) db.Datetime {
 	return date
 }
 
-func rollLeaveBackward(date db.Datetime, daysBackward int) db.Datetime {
+func rollLeaveBackward(date models.Datetime, daysBackward int) models.Datetime {
 	if date.Day-daysBackward <= 0 {
 		if date.Month == 1 {
 			date.Year -= 1
@@ -131,7 +131,7 @@ func rollLeaveBackward(date db.Datetime, daysBackward int) db.Datetime {
 	return date
 }
 
-func rollLeaveForward(date db.Datetime, daysForward int) db.Datetime {
+func rollLeaveForward(date models.Datetime, daysForward int) models.Datetime {
 	if (date.Day+daysForward) > daysInMonth[date.Month] ||
 		(date.Month == 2 && isLeapYear(date.Year) && (date.Day+daysForward) > daysInMonth[date.Month]+1) {
 		date.Day = (date.Day + daysForward) - daysInMonth[date.Month]
@@ -153,13 +153,13 @@ func rollLeaveForward(date db.Datetime, daysForward int) db.Datetime {
 // ================================
 // Main Functions
 // ================================
-func RemoveWeekendsFromLeaveData(leavesSpan db.LeaveData) ([]db.LeaveData, error) {
-	var splitLeaves []db.LeaveData
-	leaveStartDate, err := ParseStringToDate(leavesSpan.Start)
+func RemoveWeekendsFromLeaveData(leavesSpan models.LeaveInfo) ([]models.LeaveInfo, error) {
+	var splitLeaves []models.LeaveInfo
+	leaveStartDate, err := ParseStringToDate(leavesSpan.StartDate)
 	if err != nil {
 		return nil, err
 	}
-	leaveEndDate, err := ParseStringToDate(leavesSpan.End)
+	leaveEndDate, err := ParseStringToDate(leavesSpan.EndDate)
 	if err != nil {
 		return nil, err
 	}
@@ -176,18 +176,20 @@ func RemoveWeekendsFromLeaveData(leavesSpan db.LeaveData) ([]db.LeaveData, error
 	}
 
 	for leaveEndDate.IsGreaterThanOrEquals(currentDate) {
-		var leaveSpan db.LeaveData
+		var leaveSpan models.LeaveInfo
 		if endDate := rollLeaveForward(currentDate, 5-weekdayInInt); leaveEndDate.IsGreaterThanOrEquals(endDate) {
-			leaveSpan = db.LeaveData{
-				Id:    primitive.NewObjectID(),
-				Start: ParseDateToString(currentDate),
-				End:   ParseDateToString(endDate),
+			leaveSpan = models.LeaveInfo{
+				Id:        primitive.NewObjectID(),
+				StartDate: ParseDateToString(currentDate),
+				EndDate:   ParseDateToString(endDate),
+				Reason:    leavesSpan.Reason,
 			}
 		} else {
-			leaveSpan = db.LeaveData{
-				Id:    primitive.NewObjectID(),
-				Start: ParseDateToString(currentDate),
-				End:   ParseDateToString(leaveEndDate),
+			leaveSpan = models.LeaveInfo{
+				Id:        primitive.NewObjectID(),
+				StartDate: ParseDateToString(currentDate),
+				EndDate:   ParseDateToString(leaveEndDate),
+				Reason:    leavesSpan.Reason,
 			}
 		}
 
@@ -199,25 +201,25 @@ func RemoveWeekendsFromLeaveData(leavesSpan db.LeaveData) ([]db.LeaveData, error
 	return splitLeaves, nil
 }
 
-func FetchHolidays(leave db.LeaveData) ([]db.Holiday, error) {
-	leaveStartDate, err := ParseStringToDate(leave.Start)
+func FetchHolidays(leave models.LeaveInfo) ([]models.Holiday, error) {
+	leaveStartDate, err := ParseStringToDate(leave.StartDate)
 	if err != nil {
 		log.Println("There was problem parsing the starting date of a leave Err:", err)
-		return []db.Holiday{}, err
+		return []models.Holiday{}, err
 	}
 	if err = FeasibleDate(leaveStartDate); err != nil {
 		log.Println("The start date is not practically possible in the real world. Err: ", err)
-		return []db.Holiday{}, err
+		return []models.Holiday{}, err
 	}
 
-	leaveEndDate, err := ParseStringToDate(leave.End)
+	leaveEndDate, err := ParseStringToDate(leave.EndDate)
 	if err != nil {
 		log.Println("There was problem parsing the ending date of a leave Err:", err)
-		return []db.Holiday{}, err
+		return []models.Holiday{}, err
 	}
 	if err = FeasibleDate(leaveEndDate); err != nil {
 		log.Println("The start date is not practically possible in the real world. Err: ", err)
-		return []db.Holiday{}, err
+		return []models.Holiday{}, err
 	}
 
 	holidaysBson, err := database.Find("publicHolidays", bson.D{
@@ -240,7 +242,7 @@ func FetchHolidays(leave db.LeaveData) ([]db.Holiday, error) {
 		errMessage := "For fuck's sake, there was a problem, "
 		errMessage += "while trying to find a holiday conflicting with the applied leave in the database. Err:"
 		log.Println(errMessage, err)
-		return []db.Holiday{}, err
+		return []models.Holiday{}, err
 	}
 	holidays := ReturnHolidays(holidaysBson)
 	sort.Sort(Holidays(holidays))
@@ -248,21 +250,21 @@ func FetchHolidays(leave db.LeaveData) ([]db.Holiday, error) {
 	return holidays, nil
 }
 
-func RemoveHolidayFromLeaveData(leave db.LeaveData) ([]db.LeaveData, error) {
-	var splitLeaves []db.LeaveData
+func RemoveHolidayFromLeaveData(leave models.LeaveInfo) ([]models.LeaveInfo, error) {
+	var splitLeaves []models.LeaveInfo
 	holidays, err := FetchHolidays(leave)
 	if err != nil {
 		log.Println(err)
 	}
 
-	startDate := leave.Start
+	startDate := leave.StartDate
 	for _, holiday := range holidays {
 		parsedStartDate, _ := ParseStringToDate(startDate)
 		if !parsedStartDate.IsGreaterThanOrEquals(holiday.Date.Datetime) {
-			leaveSpan := db.LeaveData{
-				Id:    primitive.NewObjectID(),
-				Start: startDate,
-				End:   ParseDateToString(rollLeaveBackwardOneDay(holiday.Date.Datetime)),
+			leaveSpan := models.LeaveInfo{
+				Id:        primitive.NewObjectID(),
+				StartDate: startDate,
+				EndDate:   ParseDateToString(rollLeaveBackwardOneDay(holiday.Date.Datetime)),
 			}
 			splitLeaves = append(splitLeaves, leaveSpan)
 		}
@@ -270,19 +272,19 @@ func RemoveHolidayFromLeaveData(leave db.LeaveData) ([]db.LeaveData, error) {
 	}
 
 	parsedStartDate, _ := ParseStringToDate(startDate)
-	parsedEndDate, _ := ParseStringToDate(leave.End)
+	parsedEndDate, _ := ParseStringToDate(leave.EndDate)
 	if !parsedStartDate.IsGreaterThanOrEquals(parsedEndDate) {
-		lastLeaveSpan := db.LeaveData{
-			Id:    primitive.NewObjectID(),
-			Start: startDate,
-			End:   leave.End,
+		lastLeaveSpan := models.LeaveInfo{
+			Id:        primitive.NewObjectID(),
+			StartDate: startDate,
+			EndDate:   leave.EndDate,
 		}
 		splitLeaves = append(splitLeaves, lastLeaveSpan)
 	}
 	return splitLeaves, nil
 }
 
-type Holidays []db.Holiday
+type Holidays []models.Holiday
 
 func (holidays Holidays) Len() int      { return len(holidays) }
 func (holidays Holidays) Swap(i, j int) { holidays[i], holidays[j] = holidays[j], holidays[i] }

@@ -5,13 +5,13 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 
-	db "LeafMS-BackEnd/database"
+	models "LeafMS-BackEnd/models"
 )
 
-func ReturnLeaves(data []bson.Raw) []db.Leaves {
-	var leaves []db.Leaves
+func ReturnLeaves(data []bson.Raw) []models.MetaLeaveInfo {
+	var leaves []models.MetaLeaveInfo
 	for _, entry := range data {
-		var leave db.Leaves
+		var leave models.MetaLeaveInfo
 		if err := bson.Unmarshal(entry, &leave); err != nil {
 			log.Fatal(
 				"The decoding of leaveApplication from raw bson document failed!\nError:-\n\n", err)
@@ -21,10 +21,10 @@ func ReturnLeaves(data []bson.Raw) []db.Leaves {
 	return leaves
 }
 
-func ReturnUsers(data []bson.Raw) []db.User {
-	var employees []db.User
+func ReturnEmployees(data []bson.Raw) []models.Employee {
+	var employees []models.Employee
 	for _, entry := range data {
-		var employee db.User
+		var employee models.Employee
 		if err := bson.Unmarshal(entry, &employee); err != nil {
 			log.Fatal(
 				"The decoding of employee from raw bson document failed!\nError:-\n\n", err)
@@ -34,10 +34,10 @@ func ReturnUsers(data []bson.Raw) []db.User {
 	return employees
 }
 
-func ReturnHolidays(data []bson.Raw) []db.Holiday {
-	var holidays []db.Holiday
+func ReturnHolidays(data []bson.Raw) []models.Holiday {
+	var holidays []models.Holiday
 	for _, entry := range data {
-		var holiday db.Holiday
+		var holiday models.Holiday
 		if err := bson.Unmarshal(entry, &holiday); err != nil {
 			log.Fatal(
 				"The decoding of employee from raw bson document failed!\nError:-\n\n", err)
