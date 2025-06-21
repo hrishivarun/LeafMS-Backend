@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"LeafMS-BackEnd/database"
 	models "LeafMS-BackEnd/models"
 	"LeafMS-BackEnd/service"
 	"LeafMS-BackEnd/utils"
@@ -34,12 +35,12 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//Authenticate the user credentials with the database
-	user, loginInfo := validateCred(user)
+	user, loginInfo := service.ValidateCred(user)
 	userInfo = user //saving userInfo
 	log.Println("validated cred")
 
 	sessiondId := uuid.New().String()
-	jwtToken, err := generateJWT(sessiondId)
+	jwtToken, err := service.GenerateJWT(sessiondId)
 	if err != nil {
 		log.Fatalf("couldn't generate JWT auth token.\nError: %v\n", err)
 	}
@@ -60,6 +61,11 @@ func HandleApply(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&leaveApplication)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if (userInfo == models.Employee{} || userInfo.Username != leaveApplication.Username) {
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 	result, err := service.ApplyForLeave(leaveApplication)
@@ -94,7 +100,12 @@ func HandleViewLeaves(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := database.Find("leaves", bson.D{
+	if (userInfo == models.Employee{} || userInfo.Username != user.Username) {
+		w.WriteHeader((http.StatusUnauthorized))
+		return
+	}
+
+	data, err := database.DbConn.Find("leaves", bson.D{
 		{Key: "username", Value: user.Username}})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -107,6 +118,45 @@ func HandleViewLeaves(w http.ResponseWriter, r *http.Request) {
 
 	leaves := utils.ReturnLeaves(data)
 	response, _ := json.MarshalIndent(leaves, "", "	")
+	w.Write(response)
+}
+
+// ============================================================================
+// ============================================================================
+// handle `cancel leaves`
+// ============================================================================
+// ============================================================================
+func HandleCancelLeave(w http.ResponseWriter, r *http.Request) {
+	var cancelLeaveReq models.CancelLeavesReq
+
+	err := json.NewDecoder(r.Body).Decode(&cancelLeaveReq)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if (userInfo == models.Employee{} || userInfo.Username != cancelLeaveReq.Username) {
+		w.WriteHeader((http.StatusUnauthorized))
+		return
+	}
+
+	cancellationRes, err := service.CancelLeave(cancelLeaveReq)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if cancellationRes.MatchedCount == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		response, _ := json.Marshal("No leave application with given leave ID")
+		w.Write(response)
+		return
+	} else {
+		w.WriteHeader(http.StatusOK)
+	}
+
+	response, _ := json.MarshalIndent(cancellationRes, "", "	")
 	w.Write(response)
 }
 

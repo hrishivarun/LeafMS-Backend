@@ -1,6 +1,7 @@
 package service
 
 import (
+	"LeafMS-BackEnd/database"
 	"LeafMS-BackEnd/models"
 	"LeafMS-BackEnd/utils"
 
@@ -24,7 +25,7 @@ func ViewHolidays(filter models.HolidaysFilter) ([]models.Holiday, error) {
 		query = append(query, bson.E{Key: "date.datetime.month", Value: filter.Month})
 	}
 
-	holidaysBson, err := dbConn.Find("publicHolidays", query)
+	holidaysBson, err := database.DbConn.Find("publicHolidays", query)
 	if err != nil {
 		return nil, err
 	}

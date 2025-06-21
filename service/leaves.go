@@ -1,6 +1,7 @@
 package service
 
 import (
+	"LeafMS-BackEnd/database"
 	"LeafMS-BackEnd/models"
 	"LeafMS-BackEnd/utils"
 	"log"
@@ -20,15 +21,13 @@ func ApplyForLeave(leaveApplication models.MetaLeaveInfo) (*mongo.UpdateResult, 
 		return nil, err
 	}
 
-	result, err := dbConn.UpdateOne("leaves", bson.D{
-		{Key: "username", Value: filteredLeaves.Username},
-	}, bson.D{
-		{Key: "$push", Value: bson.D{
-			{Key: "leaves", Value: bson.D{
-				{Key: "$each", Value: filteredLeaves.Leaves},
-			}},
-		}},
-	})
+	result, err := database.DbConn.UpdateOne("leaves",
+		bson.D{
+			{Key: "username", Value: filteredLeaves.Username}},
+		bson.D{
+			{Key: "$push", Value: bson.D{
+				{Key: "leaves", Value: bson.D{
+					{Key: "$each", Value: filteredLeaves.Leaves}}}}}})
 
 	if err != nil {
 		log.Println("Encountered error while persisting applied leaves in Database. Err : ", err)
@@ -39,11 +38,32 @@ func ApplyForLeave(leaveApplication models.MetaLeaveInfo) (*mongo.UpdateResult, 
 
 // ============================================================================
 // ============================================================================
+// `cancel leaves`
+// ============================================================================
+// ============================================================================
+func CancelLeave(cancelLeaveReq models.CancelLeavesReq) (*mongo.UpdateResult, error) {
+	cancellationResult, err := database.DbConn.UpdateOne("leaves",
+		bson.D{
+			{Key: "username", Value: cancelLeaveReq.Username}},
+		bson.D{
+			{Key: "$pull", Value: bson.D{
+				{Key: "leaves", Value: bson.D{
+					{Key: "id", Value: bson.D{
+						{Key: "$in", Value: cancelLeaveReq.LeaveIds}}}}}}}})
+	if err != nil {
+		return nil, err
+	}
+
+	return cancellationResult, nil
+}
+
+// ============================================================================
+// ============================================================================
 // `view team's leaves`
 // ============================================================================
 // ============================================================================
 func ViewTeamLeaveInfo(teamName string) ([]models.MetaLeaveInfo, error) {
-	teamPeepsRaw, err := dbConn.Find("employees", bson.D{
+	teamPeepsRaw, err := database.DbConn.Find("employees", bson.D{
 		{Key: "team", Value: teamName}})
 
 	if err != nil {
@@ -55,7 +75,7 @@ func ViewTeamLeaveInfo(teamName string) ([]models.MetaLeaveInfo, error) {
 		peepsUsername = append(peepsUsername, peep.Username)
 	}
 
-	data, err := dbConn.Find("leaves", bson.D{
+	data, err := database.DbConn.Find("leaves", bson.D{
 		{Key: "username", Value: bson.D{{Key: "$in", Value: peepsUsername}}}})
 
 	if err != nil {
@@ -65,6 +85,12 @@ func ViewTeamLeaveInfo(teamName string) ([]models.MetaLeaveInfo, error) {
 	leaves := utils.ReturnLeaves(data)
 	return leaves, nil
 }
+
+// ============================================================================
+// ============================================================================
+// `view leave applications`
+// ============================================================================
+// ============================================================================
 
 // ============================================================================
 // ============================================================================
@@ -93,7 +119,7 @@ func ViewLeaveApplications(filter models.ViewApplications) ([]models.MetaLeaveIn
 		}}})
 	}
 
-	data, err := dbConn.Aggregate("leaves", pipeline)
+	data, err := database.DbConn.Aggregate("leaves", pipeline)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +137,7 @@ func ViewLeaveApplications(filter models.ViewApplications) ([]models.MetaLeaveIn
 // ============================================================================
 // ============================================================================
 func ApproveLeave(leaveApplications models.MetaLeaveInfo) (*mongo.UpdateResult, error) {
-	updatedResult, err := dbConn.UpdateOne("leaves", bson.D{
+	updatedResult, err := database.DbConn.UpdateOne("leaves", bson.D{
 		{Key: "username", Value: leaveApplications.Username}, {
 			Key: "leaves", Value: bson.D{{
 				Key: "$elemMatch", Value: bson.D{{Key: "id", Value: leaveApplications.Leaves[0].Id}}}}}, //possible bug, why only matching for Leaves[0], why not for other IDs?

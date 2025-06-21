@@ -1,4 +1,4 @@
-package db
+package database
 
 import (
 	"context"
@@ -131,3 +131,5 @@ func (db Database) Aggregate(collectioName string, pipeline mongo.Pipeline) ([]b
 	}
 	return data, nil
 }
+
+var DbConn = ConnectDB()
