@@ -3,6 +3,7 @@ package main
 import (
 	ctrlr "LeafMS-BackEnd/controller"
 	"net/http"
+	"os"
 
 	"github.com/gorilla/mux"
 )
@@ -14,11 +15,13 @@ func main() {
 	// utils.PersistPublicHolidays(2026, "IN")
 	// utils.PersistPublicHolidays(2027, "IN")
 
+	os.Setenv("JWT_SECRET", "secret-key?what's-that-girl?shake,-that,-ass-for-me.shake-it-girl!!!")
 	routes := mux.NewRouter()
 	routes.HandleFunc("/login", ctrlr.HandleLogin).Methods("GET")
+	routes.HandleFunc("/login", ctrlr.HandleAdminLogin).Methods("GET")
 	authRoute := routes.NewRoute().Subrouter()
-	// authRoute.Use(ctrlr.HandleAuth)
-	authRoute.HandleFunc("/apply-leave", ctrlr.HandleApply).Methods("PUT")
+	authRoute.Use(ctrlr.HandleAuthMiddleWare)
+	authRoute.HandleFunc("/apply-leave", ctrlr.HandleApply).Methods("POST")
 	authRoute.HandleFunc("/cancel-leave", ctrlr.HandleCancelLeave).Methods("POST")
 	authRoute.HandleFunc("/view-leaves", ctrlr.HandleViewLeaves).Methods("GET")
 	authRoute.HandleFunc("/view-team-leaves", ctrlr.HandleViewTeamLeaves).Methods(("GET"))

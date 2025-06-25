@@ -2,7 +2,6 @@ package controller
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 
 	"LeafMS-BackEnd/database"
@@ -10,46 +9,8 @@ import (
 	"LeafMS-BackEnd/service"
 	"LeafMS-BackEnd/utils"
 
-	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 )
-
-var userInfo models.Employee
-
-// ============================================================================
-// ============================================================================
-// handle `login`
-// ============================================================================
-// ============================================================================
-func HandleLogin(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
-	var user models.Employee
-
-	log.Println("started login api")
-	err := json.NewDecoder(r.Body).Decode(&user)
-	if err != nil {
-		log.Fatal(err)
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Bad Request payload!!!"))
-		return
-	}
-
-	//Authenticate the user credentials with the database
-	user, loginInfo := service.ValidateCred(user)
-	userInfo = user //saving userInfo
-	log.Println("validated cred")
-
-	sessiondId := uuid.New().String()
-	jwtToken, err := service.GenerateJWT(sessiondId)
-	if err != nil {
-		log.Fatalf("couldn't generate JWT auth token.\nError: %v\n", err)
-	}
-	w.Header().Add("Authorization", jwtToken)
-	w.Header().Add("Session-Id", sessiondId)
-
-	response, _ := json.MarshalIndent(loginInfo, "", "	")
-	w.Write(response)
-}
 
 // ============================================================================
 // ============================================================================
@@ -57,6 +18,11 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 // ============================================================================
 func HandleApply(w http.ResponseWriter, r *http.Request) {
+	username, ok := r.Context().Value("username").(string)
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 	var leaveApplication models.MetaLeaveInfo
 	err := json.NewDecoder(r.Body).Decode(&leaveApplication)
 	if err != nil {
@@ -64,7 +30,7 @@ func HandleApply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if (userInfo == models.Employee{} || userInfo.Username != leaveApplication.Username) {
+	if username != leaveApplication.Username {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -93,6 +59,12 @@ func HandleApply(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 // ============================================================================
 func HandleViewLeaves(w http.ResponseWriter, r *http.Request) {
+	username, ok := r.Context().Value("username").(string)
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
 	var user models.Employee
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
@@ -100,8 +72,10 @@ func HandleViewLeaves(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if (userInfo == models.Employee{} || userInfo.Username != user.Username) {
-		w.WriteHeader((http.StatusUnauthorized))
+	// relic of a past better not talked about
+
+	if username != user.Username {
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
@@ -127,6 +101,12 @@ func HandleViewLeaves(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 // ============================================================================
 func HandleCancelLeave(w http.ResponseWriter, r *http.Request) {
+	username, ok := r.Context().Value("username").(string)
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
 	var cancelLeaveReq models.CancelLeavesReq
 
 	err := json.NewDecoder(r.Body).Decode(&cancelLeaveReq)
@@ -135,8 +115,8 @@ func HandleCancelLeave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if (userInfo == models.Employee{} || userInfo.Username != cancelLeaveReq.Username) {
-		w.WriteHeader((http.StatusUnauthorized))
+	if username != cancelLeaveReq.Username {
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
@@ -166,6 +146,12 @@ func HandleCancelLeave(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 // ============================================================================
 func HandleViewTeamLeaves(w http.ResponseWriter, r *http.Request) {
+	username, ok := r.Context().Value("username").(string)
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
 	var user models.Employee
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
@@ -173,8 +159,8 @@ func HandleViewTeamLeaves(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if (userInfo == models.Employee{} || userInfo.Username != user.Username) {
-		w.WriteHeader((http.StatusUnauthorized))
+	if username != user.Username {
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
@@ -187,57 +173,6 @@ func HandleViewTeamLeaves(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response, _ := json.MarshalIndent(leaves, "", "	")
-	w.Write(response)
-}
-
-// ============================================================================
-// ============================================================================
-// handle `view leave applications`
-// ============================================================================
-// ============================================================================
-func HandleViewLeaveApplications(w http.ResponseWriter, r *http.Request) {
-	var filter models.ViewApplications
-	err := json.NewDecoder(r.Body).Decode(&filter)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	if (userInfo == models.Employee{} || userInfo.Username != filter.ApproverName) {
-		w.WriteHeader((http.StatusUnauthorized))
-		return
-	}
-	applications, err := service.ViewLeaveApplications(filter)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	response, _ := json.MarshalIndent(applications, "", " ")
-	w.Write(response)
-}
-
-// ============================================================================
-// ============================================================================
-// handle `leaves approval`
-// ============================================================================
-// ============================================================================
-func HandleLeaveApproval(w http.ResponseWriter, r *http.Request) {
-	var leaveApplications models.MetaLeaveInfo
-	if err := json.NewDecoder(r.Body).Decode(&leaveApplications); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	if (userInfo == models.Employee{} || userInfo.Username != leaveApplications.Approver) {
-		w.WriteHeader((http.StatusUnauthorized))
-		return
-	}
-	updatedResult, err := service.ApproveLeave(leaveApplications)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	response, _ := json.MarshalIndent(updatedResult, "", "	")
 	w.Write(response)
 }
 

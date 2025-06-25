@@ -15,9 +15,10 @@ type Employee struct {
 	TotalLeaveCount int                `bson:"leavesCount" json:"leavesCount" validate:"required"`
 }
 
-type UserLogin struct {
+type LoginInfo struct {
 	Username string `bson:"username" json:"username"`
-	Login    bool   `bson:"isLogin" json:"isLogin"`
+	Status   int    `bson:"status" json:"status"`
+	Token    string `bson:"token" json:"token"`
 }
 
 type LeaveCount struct {
