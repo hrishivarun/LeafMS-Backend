@@ -18,20 +18,14 @@ import (
 // ============================================================================
 // ============================================================================
 func HandleApply(w http.ResponseWriter, r *http.Request) {
-	username, ok := r.Context().Value("username").(string)
-	if !ok {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
 	var leaveApplication models.MetaLeaveInfo
-	err := json.NewDecoder(r.Body).Decode(&leaveApplication)
-	if err != nil {
+	if err := service.JsonDecoderWrapper(r.Body, &leaveApplication); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	if username != leaveApplication.Username {
-		w.WriteHeader(http.StatusUnauthorized)
+	if loggedUsername, _ := r.Context().Value("username").(string); loggedUsername != leaveApplication.Username {
+		http.Error(w, "You do not have access to this API! stop messing bruv", http.StatusForbidden)
 		return
 	}
 	result, err := service.ApplyForLeave(leaveApplication)
@@ -59,23 +53,14 @@ func HandleApply(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 // ============================================================================
 func HandleViewLeaves(w http.ResponseWriter, r *http.Request) {
-	username, ok := r.Context().Value("username").(string)
-	if !ok {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
 	var user models.Employee
-	err := json.NewDecoder(r.Body).Decode(&user)
-	if err != nil {
+	if err := service.JsonDecoderWrapper(r.Body, &user); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	// relic of a past better not talked about
-
-	if username != user.Username {
-		w.WriteHeader(http.StatusUnauthorized)
+	if loggedUsername, _ := r.Context().Value("username").(string); loggedUsername != user.Username {
+		http.Error(w, "You do not have access to this API! stop messing bruv", http.StatusForbidden)
 		return
 	}
 
@@ -101,22 +86,14 @@ func HandleViewLeaves(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 // ============================================================================
 func HandleCancelLeave(w http.ResponseWriter, r *http.Request) {
-	username, ok := r.Context().Value("username").(string)
-	if !ok {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
 	var cancelLeaveReq models.CancelLeavesReq
-
-	err := json.NewDecoder(r.Body).Decode(&cancelLeaveReq)
-	if err != nil {
+	if err := service.JsonDecoderWrapper(r.Body, &cancelLeaveReq); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	if username != cancelLeaveReq.Username {
-		w.WriteHeader(http.StatusUnauthorized)
+	if loggedUsername, _ := r.Context().Value("username").(string); loggedUsername != cancelLeaveReq.Username {
+		http.Error(w, "You do not have access to this API! stop messing bruv", http.StatusForbidden)
 		return
 	}
 
@@ -146,21 +123,14 @@ func HandleCancelLeave(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 // ============================================================================
 func HandleViewTeamLeaves(w http.ResponseWriter, r *http.Request) {
-	username, ok := r.Context().Value("username").(string)
-	if !ok {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
 	var user models.Employee
-	err := json.NewDecoder(r.Body).Decode(&user)
-	if err != nil {
+	if err := service.JsonDecoderWrapper(r.Body, &user); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	if username != user.Username {
-		w.WriteHeader(http.StatusUnauthorized)
+	if loggedUsername, _ := r.Context().Value("username").(string); loggedUsername != user.Username {
+		http.Error(w, "You do not have access to this API! stop messing bruv", http.StatusForbidden)
 		return
 	}
 
@@ -183,7 +153,7 @@ func HandleViewTeamLeaves(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 func HandleViewHolidays(w http.ResponseWriter, r *http.Request) {
 	var filter models.HolidaysFilter
-	if err := json.NewDecoder(r.Body).Decode(&filter); err != nil {
+	if err := service.JsonDecoderWrapper(r.Body, &filter); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

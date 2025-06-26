@@ -75,36 +75,6 @@ func ValidateAdminCred(userToAuthorize models.Employee) (models.Employee, models
 
 	loginInfo.Token = token
 	return userToAuthorize, loginInfo
-
-	// var loginDetails models.LoginInfo
-	// if userToAuthorize.Username != Admin {
-	// 	loginDetails.Login = false
-	// 	log.Fatalf("User is not Admin")
-	// 	return models.Employee{}, loginDetails
-	// }
-	// data, err := database.DbConn.FindOne("employees", bson.D{
-	// 	{Key: "username", Value: "admin"},
-	// 	{Key: "password", Value: userToAuthorize.Password}})
-	// if err != nil {
-	// 	loginDetails.Login = false
-	// 	log.Fatal("Failed authentication. Error:- \n\t", err)
-	// 	return models.Employee{}, loginDetails
-	// }
-
-	// var user models.Employee
-	// err = bson.Unmarshal(data, &user)
-	// if err != nil {
-	// 	log.Fatal("Couldn't unwrap the user data recieved from mongoDB.\nError:-\n\n", err)
-	// }
-
-	// if user.Username == "" {
-	// 	loginDetails.Login = false
-	// 	return user, loginDetails
-	// } else {
-	// 	loginDetails.Username = user.Username
-	// 	loginDetails.Login = true
-	// }
-	// return user, loginDetails
 }
 
 // function to validate the models.user
@@ -143,4 +113,17 @@ func ValidateCred(userToAuthorize models.Employee) (models.Employee, models.Logi
 	loginInfo.Status = http.StatusOK
 	loginInfo.Token = token
 	return userToAuthorize, loginInfo
+}
+
+func ValidateApprover(employeeUsername string, approverUsername string) bool {
+	applierInfoRaw, err := database.DbConn.FindOne("employees", bson.D{{Key: "username", Value: employeeUsername}})
+	if err != nil {
+		return false
+	}
+	var applierInfo models.Employee
+	if err = bson.Unmarshal(applierInfoRaw, &applierInfo); err != nil {
+		log.Fatal("what the fuck? why is there a problem deserializing employee from database entry?")
+		return false
+	}
+	return applierInfo.Approver == approverUsername
 }

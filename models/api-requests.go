@@ -37,3 +37,8 @@ type HolidaysFilter struct {
 	Year    int    `bson:"year" json:"year"`
 	Month   int    `bson:"month" json:"month"`
 }
+
+type PostHoliday struct {
+	Country string `bson:"country" json:"country"`
+	Year    int    `bson:"year" json:"year"`
+}

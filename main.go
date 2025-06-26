@@ -18,9 +18,10 @@ func main() {
 	os.Setenv("JWT_SECRET", "secret-key?what's-that-girl?shake,-that,-ass-for-me.shake-it-girl!!!")
 	routes := mux.NewRouter()
 	routes.HandleFunc("/login", ctrlr.HandleLogin).Methods("GET")
-	routes.HandleFunc("/login", ctrlr.HandleAdminLogin).Methods("GET")
+	routes.HandleFunc("/admin-login", ctrlr.HandleAdminLogin).Methods("GET")
+
 	authRoute := routes.NewRoute().Subrouter()
-	authRoute.Use(ctrlr.HandleAuthMiddleWare)
+	authRoute.Use(ctrlr.HandleValidateAuth)
 	authRoute.HandleFunc("/apply-leave", ctrlr.HandleApply).Methods("POST")
 	authRoute.HandleFunc("/cancel-leave", ctrlr.HandleCancelLeave).Methods("POST")
 	authRoute.HandleFunc("/view-leaves", ctrlr.HandleViewLeaves).Methods("GET")
@@ -28,6 +29,15 @@ func main() {
 	authRoute.HandleFunc("/view-applications", ctrlr.HandleViewLeaveApplications).Methods(("GET"))
 	authRoute.HandleFunc("/approve-leave", ctrlr.HandleLeaveApproval).Methods("PATCH")
 	authRoute.HandleFunc("/view-holidays", ctrlr.HandleViewHolidays).Methods("GET")
+	// a `/me?` api for personal details?
+
+	adminRoute := routes.NewRoute().Subrouter()
+	adminRoute.Use(ctrlr.HandleValidateAdminAuth)
+	authRoute.HandleFunc("view-employees", ctrlr.HandleViewEmployees).Methods("GET")
+	authRoute.HandleFunc("post-holidays", ctrlr.HandlePostHolidays).Methods("POST")
+	// delete holiday?
+	// add employee?? /POST /register-employee
+	// remove employee??
 
 	http.ListenAndServe(":8080", routes)
 

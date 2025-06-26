@@ -3,6 +3,8 @@ package service
 import (
 	"LeafMS-BackEnd/models"
 	"LeafMS-BackEnd/utils"
+	"encoding/json"
+	"io"
 	"log"
 	"os"
 	"time"
@@ -39,4 +41,13 @@ func FilterHolidaysFromLeaveRequest(leaveApplication models.MetaLeaveInfo) (mode
 
 	leaveApplication.Leaves = leavesLackingWeekend
 	return leaveApplication, nil
+}
+
+func JsonDecoderWrapper(body io.ReadCloser, model interface{}) error {
+	err := json.NewDecoder(body).Decode(model)
+	if err != nil {
+		log.Fatal("mar gayo re, sala json decoder phar rha hai")
+		return err
+	}
+	return nil
 }

@@ -13,20 +13,14 @@ import (
 // ============================================================================
 // ============================================================================
 func HandleViewLeaveApplications(w http.ResponseWriter, r *http.Request) {
-	username, ok := r.Context().Value("username").(string)
-	if !ok {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
 	var filter models.ViewApplications
-	err := json.NewDecoder(r.Body).Decode(&filter)
-	if err != nil {
+	if err := service.JsonDecoderWrapper(r.Body, &filter); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	if username != filter.ApproverName {
-		w.WriteHeader(http.StatusUnauthorized)
+	if loggedUsername, _ := r.Context().Value("username").(string); loggedUsername != filter.ApproverName {
+		http.Error(w, "You do not have access to this API! stop messing bruv", http.StatusUnauthorized)
 		return
 	}
 	applications, err := service.ViewLeaveApplications(filter)
@@ -44,20 +38,17 @@ func HandleViewLeaveApplications(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 // ============================================================================
 func HandleLeaveApproval(w http.ResponseWriter, r *http.Request) {
-	username, ok := r.Context().Value("username").(string)
-	if !ok {
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
 	var leaveApplications models.ApproveLeaveReq
-	if err := json.NewDecoder(r.Body).Decode(&leaveApplications); err != nil {
+	if err := service.JsonDecoderWrapper(r.Body, &leaveApplications); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	if username != leaveApplications.Username {
-		w.WriteHeader(http.StatusUnauthorized)
+
+	if loggedUsername, _ := r.Context().Value("username").(string); !service.ValidateApprover(leaveApplications.Username, loggedUsername) {
+		http.Error(w, "You do not have access to this API! stop messing bruv", http.StatusUnauthorized)
 		return
 	}
+
 	updatedResult, err := service.ApproveLeave(leaveApplications)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
