@@ -34,10 +34,10 @@ func main() {
 	adminRoute := routes.NewRoute().Subrouter()
 	adminRoute.Use(ctrlr.HandleValidateAdminAuth)
 	authRoute.HandleFunc("view-employees", ctrlr.HandleViewEmployees).Methods("GET")
+	authRoute.HandleFunc("register-employees", ctrlr.HandleRegisterEmployee).Methods("POST")
+	authRoute.HandleFunc("remove-employees", ctrlr.HandleRemoveEmployee).Methods("DELETE")
 	authRoute.HandleFunc("post-holidays", ctrlr.HandlePostHolidays).Methods("POST")
 	// delete holiday?
-	// add employee?? /POST /register-employee
-	// remove employee??
 
 	http.ListenAndServe(":8080", routes)
 

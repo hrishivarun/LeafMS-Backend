@@ -57,23 +57,37 @@ func ConnectDB() *Database {
 	}
 }
 
-// func (db Database) insert(collectionName string, document User) *mongo.InsertOneResult {
-// 	collection := db.Database.Collection(collectionName)
-// 	result, err := collection.InsertOne(ctx, document)
-// 	if err != nil {
-// 		log.Fatal("Could not insert document", err)
-// 	}
-// 	return result
-// }
-
-func (db Database) InsertMany(collectionName string, document []interface{}) (*mongo.InsertManyResult, error) {
+func (db Database) InsertOne(collectionName string, document interface{}) (*mongo.InsertOneResult, error) {
 	collection := db.Database.Collection(collectionName)
-	result, err := collection.InsertMany(db.Context, document)
+	result, err := collection.InsertOne(db.Context, document)
 	if err != nil {
 		log.Fatal("Could not insert document. Error:-\n\t", err)
 		return nil, err
 	}
 	return result, nil
+}
+
+func (db Database) InsertMany(collectionName string, document []interface{}) (*mongo.InsertManyResult, error) {
+	collection := db.Database.Collection(collectionName)
+	result, err := collection.InsertMany(db.Context, document)
+	if err != nil {
+		log.Fatal("Could not insert documents. Error:-\n\t", err)
+		return nil, err
+	}
+	return result, nil
+}
+
+func (db Database) FindOne(collectionName string, filter bson.D) (bson.Raw, error) {
+	var data bson.Raw
+
+	collection := db.Database.Collection(collectionName)
+	err := collection.FindOne(db.Context, filter).Decode(&data)
+	if err != nil {
+		log.Fatal("The FindOne query did not return a result. Error:-\n\t", err)
+		return nil, err
+	}
+
+	return data, nil
 }
 
 func (db Database) Find(collectionName string, filter bson.D) ([]bson.Raw, error) {
@@ -93,24 +107,43 @@ func (db Database) Find(collectionName string, filter bson.D) ([]bson.Raw, error
 	return data, nil
 }
 
-func (db Database) FindOne(collectionName string, filter bson.D) (bson.Raw, error) {
-	var data bson.Raw
-
-	collection := db.Database.Collection(collectionName)
-	err := collection.FindOne(db.Context, filter).Decode(&data)
-	if err != nil {
-		log.Fatal("The FindOne query did not return a result. Error:-\n\t", err)
-		return nil, err
-	}
-
-	return data, nil
-}
-
 func (db Database) UpdateOne(collectionName string, filter bson.D, update interface{}) (*mongo.UpdateResult, error) {
-	collection := db.Database.Collection((collectionName))
+	collection := db.Database.Collection(collectionName)
 	res, err := collection.UpdateOne(db.Context, filter, update)
 	if err != nil {
-		log.Fatal("Could not update the leave entries for filter:- ", filter)
+		log.Fatal("Could not update the entry for filter:- ", filter)
+		return nil, err
+	}
+	return res, nil
+}
+
+func (db Database) UpdateMany(collectionName string, filter bson.D, updates []interface{}) (*mongo.UpdateResult, error) {
+	collection := db.Database.Collection(collectionName)
+	res, err := collection.UpdateMany(db.Context, filter, updates)
+	if err != nil {
+		log.Fatal("Could not update the entries for filter:- ", filter)
+		return nil, err
+	}
+	return res, nil
+}
+
+func (db Database) DeleteOne(collectionName string, filter bson.D) (*mongo.DeleteResult, error) {
+	collection := db.Database.Collection(collectionName)
+	res, err := collection.DeleteOne(db.Context, filter)
+	if err != nil {
+		log.Fatal("Could not delete entry for filter:- ", filter)
+		log.Fatal("Err:- ", err)
+		return nil, err
+	}
+	return res, nil
+}
+
+func (db Database) DeleteMany(collectionName string, filter bson.D) (*mongo.DeleteResult, error) {
+	collection := db.Database.Collection(collectionName)
+	res, err := collection.DeleteMany(db.Context, filter)
+	if err != nil {
+		log.Fatal("Could not delete entries for filter:- ", filter)
+		log.Fatal("Err:- ", err)
 		return nil, err
 	}
 	return res, nil
