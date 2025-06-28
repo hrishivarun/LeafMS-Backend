@@ -1,7 +1,7 @@
 package utils
 
 import (
-	db "LeafMS-BackEnd/database"
+	"LeafMS-BackEnd/database"
 	models "LeafMS-BackEnd/models"
 	"encoding/json"
 	"fmt"
@@ -12,7 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var database = db.ConnectDB()
+var DbConn = database.DbConn
 
 func PersistPublicHolidays(year int, countryCode string) (*mongo.InsertManyResult, error) {
 	var url = fmt.Sprintf("https://calendarific.com/api/v2/holidays?&api_key=uhXXRzt1AhCbm9h6MKzfqwCU7kT4XFEH&country=%s&year=%d", countryCode, year)
@@ -41,7 +41,7 @@ func PersistPublicHolidays(year int, countryCode string) (*mongo.InsertManyResul
 		holidaysArr = append(holidaysArr, holidays)
 	}
 
-	result, err := database.InsertMany("publicHolidays", holidaysArr)
+	result, err := DbConn.InsertMany("publicHolidays", holidaysArr)
 	if err != nil {
 		log.Fatalln("Could not persist public holiday data in database!!\n\n Error:=	", err)
 		return nil, err

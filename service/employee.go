@@ -3,7 +3,6 @@ package service
 import (
 	"LeafMS-BackEnd/database"
 	"LeafMS-BackEnd/models"
-	"LeafMS-BackEnd/utils"
 	"log"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -75,7 +74,7 @@ func ViewLeaves(viewReq models.ViewLeavesReq) ([]models.LeaveInfo, error) {
 		return nil, nil
 	}
 
-	return utils.ReturnLeaves(data), nil
+	return database.ConvertRawBsonToLeaves(data), nil
 }
 
 // ============================================================================
@@ -90,7 +89,7 @@ func ViewTeamLeaveInfo(teamName string) ([]models.LeaveInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	teamPeeps := utils.ReturnEmployees(teamPeepsRaw)
+	teamPeeps := database.ConvertRawBsonToEmployees(teamPeepsRaw)
 	var peepsUsername []string
 	for _, peep := range teamPeeps {
 		peepsUsername = append(peepsUsername, peep.Username)
@@ -103,7 +102,7 @@ func ViewTeamLeaveInfo(teamName string) ([]models.LeaveInfo, error) {
 		return nil, err
 	}
 
-	leaves := utils.ReturnLeaves(data)
+	leaves := database.ConvertRawBsonToLeaves(data)
 	return leaves, nil
 }
 
@@ -129,6 +128,6 @@ func ViewHolidays(filter models.HolidaysFilter) ([]models.Holiday, error) {
 		return nil, err
 	}
 
-	holidays := utils.ReturnHolidays(holidaysBson)
+	holidays := database.ConvertRawBsonToHolidays(holidaysBson)
 	return holidays, nil
 }

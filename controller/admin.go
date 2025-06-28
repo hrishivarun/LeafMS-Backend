@@ -18,7 +18,7 @@ import (
 // ============================================================================
 func HandleViewEmployees(w http.ResponseWriter, r *http.Request) {
 	var admin models.Employee
-	if err := service.JsonDecoderWrapper(r.Body, &admin); err != nil {
+	if err := service.DecodeJson(r.Body, &admin); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
@@ -28,11 +28,11 @@ func HandleViewEmployees(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	records, err := database.DbConn.Find("employees", bson.D{})
+	result, err := database.DbConn.Find("employees", bson.D{})
 	if err != nil {
 		http.Error(w, "Something shitty happened here!!!", http.StatusInternalServerError)
 	}
-	response, _ := json.MarshalIndent(records, "", " ")
+	response, _ := json.MarshalIndent(result, "", " ")
 	w.Write(response)
 }
 
@@ -48,20 +48,20 @@ func HandleRegisterEmployee(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var newEmployee models.Employee
-	if err := service.JsonDecoderWrapper(r.Body, &newEmployee); err != nil {
+	if err := service.DecodeJson(r.Body, &newEmployee); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
 
-	registrationResult, err := database.DbConn.InsertOne("employees", newEmployee)
+	result, err := database.DbConn.InsertOne("employees", newEmployee)
 	if err != nil {
 		http.Error(w, "Something shitty happened here!!!", http.StatusInternalServerError)
 	}
-	if registrationResult.InsertedID == 0 {
+	if result.InsertedID == 0 {
 		http.Error(w, "For some reason, the employee creation did not go through?", http.StatusInternalServerError)
 	}
-	registrationResponse, _ := json.MarshalIndent(registrationResult, "", " ")
-	w.Write(registrationResponse)
+	response, _ := json.MarshalIndent(result, "", " ")
+	w.Write(response)
 }
 
 // ============================================================================
@@ -76,20 +76,20 @@ func HandleRemoveEmployee(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var employeeToDelete models.Employee
-	if err := service.JsonDecoderWrapper(r.Body, &employeeToDelete); err != nil {
+	if err := service.DecodeJson(r.Body, &employeeToDelete); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
 
-	deletionResult, err := database.DbConn.DeleteOne("employees", bson.D{{Key: "username", Value: employeeToDelete.Username}})
+	result, err := database.DbConn.DeleteOne("employees", bson.D{{Key: "username", Value: employeeToDelete.Username}})
 	if err != nil {
 		http.Error(w, "Something shitty happened here!!!", http.StatusInternalServerError)
 	}
-	if deletionResult.DeletedCount == 0 {
+	if result.DeletedCount == 0 {
 		http.Error(w, "Wtf bro? no employee was deleted, what are you doin?? you sure this is the username", http.StatusNotFound)
 	}
-	deletionResponse, _ := json.MarshalIndent(deletionResult, "", " ")
-	w.Write(deletionResponse)
+	response, _ := json.MarshalIndent(result, "", " ")
+	w.Write(response)
 }
 
 // ============================================================================
@@ -99,7 +99,7 @@ func HandleRemoveEmployee(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 func HandlePostHolidays(w http.ResponseWriter, r *http.Request) {
 	var postHolidayReq models.PostHoliday
-	if err := service.JsonDecoderWrapper(r.Body, &postHolidayReq); err != nil {
+	if err := service.DecodeJson(r.Body, &postHolidayReq); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
@@ -114,7 +114,7 @@ func HandlePostHolidays(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "oopsie, holiday write request did not GO THORUGH SIR!!!", http.StatusInternalServerError)
 		return
 	}
-	jsonRes := models.InsertManyResult{InsertedIDs: postHolidayRes.InsertedIDs}
-	res, _ := json.MarshalIndent(jsonRes, "", " ")
+	result := models.InsertManyResult{InsertedIDs: postHolidayRes.InsertedIDs}
+	res, _ := json.MarshalIndent(result, "", " ")
 	w.Write(res)
 }

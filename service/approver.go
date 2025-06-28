@@ -3,7 +3,6 @@ package service
 import (
 	"LeafMS-BackEnd/database"
 	"LeafMS-BackEnd/models"
-	"LeafMS-BackEnd/utils"
 	"log"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -46,7 +45,7 @@ func ViewLeaveApplications(filter models.ViewApplications) ([]models.LeaveInfo, 
 		return nil, nil
 	}
 
-	leaveApplications := utils.ReturnLeaves(data)
+	leaveApplications := database.ConvertRawBsonToLeaves(data)
 	return leaveApplications, nil
 }
 

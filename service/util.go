@@ -50,27 +50,6 @@ func FilterHolidaysFromLeaveRequest(leaveApplication models.LeaveApplication) (m
 	return leaveApplication, nil
 }
 
-func JsonDecoderWrapper(body io.ReadCloser, model interface{}) error {
-	err := json.NewDecoder(body).Decode(model)
-	if err != nil {
-		log.Fatal("mar gayo re, sala json decoder phar rha hai")
-		return err
-	}
-	return nil
-}
-
-func ValidateRequest(request any) error {
-	if err := reqValidator.Struct(request); err != nil {
-		validationErrors := err.(validator.ValidationErrors)
-		errorMessages := ""
-		for _, fieldErr := range validationErrors {
-			errorMessages += fmt.Sprintf(fieldErr.Field() + "is required\n")
-		}
-		return errors.New(errorMessages)
-	}
-	return nil
-}
-
 func CreateViewLeavesFilter(viewLeavesReq models.ViewLeavesReq) bson.D {
 	filter := bson.D{{Key: "username", Value: viewLeavesReq.Username}}
 
@@ -90,4 +69,25 @@ func CreateViewLeavesFilter(viewLeavesReq models.ViewLeavesReq) bson.D {
 		}}}})
 	}
 	return filter
+}
+
+func DecodeJson(body io.ReadCloser, model interface{}) error {
+	err := json.NewDecoder(body).Decode(model)
+	if err != nil {
+		log.Fatal("mar gayo re, sala json decoder phar rha hai")
+		return err
+	}
+	return nil
+}
+
+func ValidateRequest(request any) error {
+	if err := reqValidator.Struct(request); err != nil {
+		validationErrors := err.(validator.ValidationErrors)
+		errorMessages := ""
+		for _, fieldErr := range validationErrors {
+			errorMessages += fmt.Sprintf(fieldErr.Field() + "is required\n")
+		}
+		return errors.New(errorMessages)
+	}
+	return nil
 }

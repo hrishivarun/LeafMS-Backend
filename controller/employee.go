@@ -15,7 +15,7 @@ import (
 // ============================================================================
 func HandleApply(w http.ResponseWriter, r *http.Request) {
 	var leaveApplication models.LeaveApplication
-	if err := service.JsonDecoderWrapper(r.Body, &leaveApplication); err != nil {
+	if err := service.DecodeJson(r.Body, &leaveApplication); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -54,7 +54,7 @@ func HandleApply(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 func HandleCancelLeave(w http.ResponseWriter, r *http.Request) {
 	var cancelLeaveReq models.CancelLeavesReq
-	if err := service.JsonDecoderWrapper(r.Body, &cancelLeaveReq); err != nil {
+	if err := service.DecodeJson(r.Body, &cancelLeaveReq); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -93,7 +93,7 @@ func HandleCancelLeave(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 func HandleViewLeaves(w http.ResponseWriter, r *http.Request) {
 	var viewReq models.ViewLeavesReq
-	if err := service.JsonDecoderWrapper(r.Body, &viewReq); err != nil {
+	if err := service.DecodeJson(r.Body, &viewReq); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -112,7 +112,7 @@ func HandleViewLeaves(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if data == nil {
+	if data == nil || len(data) == 0 {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -128,7 +128,7 @@ func HandleViewLeaves(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 func HandleViewTeamLeaves(w http.ResponseWriter, r *http.Request) {
 	var user models.Employee
-	if err := service.JsonDecoderWrapper(r.Body, &user); err != nil {
+	if err := service.DecodeJson(r.Body, &user); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -138,15 +138,15 @@ func HandleViewTeamLeaves(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	leaves, err := service.ViewTeamLeaveInfo(user.Team)
+	data, err := service.ViewTeamLeaveInfo(user.Team)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
-	if len(leaves) == 0 {
+	if len(data) == 0 {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	response, _ := json.MarshalIndent(leaves, "", "	")
+	response, _ := json.MarshalIndent(data, "", "	")
 	w.Write(response)
 }
 
@@ -157,7 +157,7 @@ func HandleViewTeamLeaves(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 func HandleViewHolidays(w http.ResponseWriter, r *http.Request) {
 	var filter models.HolidaysFilter
-	if err := service.JsonDecoderWrapper(r.Body, &filter); err != nil {
+	if err := service.DecodeJson(r.Body, &filter); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

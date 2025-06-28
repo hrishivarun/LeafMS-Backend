@@ -14,7 +14,7 @@ import (
 // ============================================================================
 func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	var user models.Employee
-	if err := service.JsonDecoderWrapper(r.Body, &user); err != nil {
+	if err := service.DecodeJson(r.Body, &user); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
@@ -39,7 +39,7 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 func HandleAdminLogin(w http.ResponseWriter, r *http.Request) {
 	var user models.Employee
-	if err := service.JsonDecoderWrapper(r.Body, &user); err != nil {
+	if err := service.DecodeJson(r.Body, &user); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}

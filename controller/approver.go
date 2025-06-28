@@ -14,7 +14,7 @@ import (
 // ============================================================================
 func HandleViewLeaveApplications(w http.ResponseWriter, r *http.Request) {
 	var filter models.ViewApplications
-	if err := service.JsonDecoderWrapper(r.Body, &filter); err != nil {
+	if err := service.DecodeJson(r.Body, &filter); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -28,7 +28,7 @@ func HandleViewLeaveApplications(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if data == nil {
+	if data == nil || len(data) == 0 {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -43,7 +43,7 @@ func HandleViewLeaveApplications(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 func HandleLeaveApproval(w http.ResponseWriter, r *http.Request) {
 	var leaveApplications models.ResolveLeaveReq
-	if err := service.JsonDecoderWrapper(r.Body, &leaveApplications); err != nil {
+	if err := service.DecodeJson(r.Body, &leaveApplications); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -53,12 +53,12 @@ func HandleLeaveApproval(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updatedResult, err := service.ResolveLeave(leaveApplications)
+	result, err := service.ResolveLeave(leaveApplications)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	response, _ := json.MarshalIndent(updatedResult, "", "	")
+	response, _ := json.MarshalIndent(result, "", "	")
 	w.Write(response)
 }
