@@ -4,6 +4,7 @@ import (
 	"LeafMS-BackEnd/database"
 	"LeafMS-BackEnd/models"
 	"LeafMS-BackEnd/utils"
+	"log"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -14,7 +15,7 @@ import (
 // `view leave applications`
 // ============================================================================
 // ============================================================================
-func ViewLeaveApplications(filter models.ViewApplications) ([]models.MetaLeaveInfo, error) {
+func ViewLeaveApplications(filter models.ViewApplications) ([]models.LeaveInfo, error) {
 	var pipeline mongo.Pipeline
 	// Always filter by approver
 	pipeline = append(pipeline, bson.D{{Key: "$match", Value: bson.D{
@@ -41,7 +42,8 @@ func ViewLeaveApplications(filter models.ViewApplications) ([]models.MetaLeaveIn
 		return nil, err
 	}
 	if data == nil {
-		return nil, err
+		log.Fatal("No Leave entry found for given query")
+		return nil, nil
 	}
 
 	leaveApplications := utils.ReturnLeaves(data)
@@ -50,10 +52,10 @@ func ViewLeaveApplications(filter models.ViewApplications) ([]models.MetaLeaveIn
 
 // ============================================================================
 // ============================================================================
-// `leaves approval`
+// `resolve leaves`
 // ============================================================================
 // ============================================================================
-func ApproveLeave(leaveApplications models.ApproveLeaveReq) (*mongo.UpdateResult, error) {
+func ResolveLeave(leaveApplications models.ResolveLeaveReq) (*mongo.UpdateResult, error) {
 	updatedResult, err := database.DbConn.UpdateOne("leaves", bson.D{
 		{Key: "username", Value: leaveApplications.Username}, {
 			Key: "leaves", Value: bson.D{{

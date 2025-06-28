@@ -23,12 +23,16 @@ func HandleViewLeaveApplications(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "You do not have access to this API! stop messing bruv", http.StatusUnauthorized)
 		return
 	}
-	applications, err := service.ViewLeaveApplications(filter)
+	data, err := service.ViewLeaveApplications(filter)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	response, _ := json.MarshalIndent(applications, "", " ")
+	if data == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	response, _ := json.MarshalIndent(data, "", " ")
 	w.Write(response)
 }
 
@@ -38,7 +42,7 @@ func HandleViewLeaveApplications(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 // ============================================================================
 func HandleLeaveApproval(w http.ResponseWriter, r *http.Request) {
-	var leaveApplications models.ApproveLeaveReq
+	var leaveApplications models.ResolveLeaveReq
 	if err := service.JsonDecoderWrapper(r.Body, &leaveApplications); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -49,7 +53,7 @@ func HandleLeaveApproval(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updatedResult, err := service.ApproveLeave(leaveApplications)
+	updatedResult, err := service.ResolveLeave(leaveApplications)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

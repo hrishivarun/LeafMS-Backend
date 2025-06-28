@@ -26,15 +26,14 @@ const (
 )
 
 type LeaveInfo struct {
-	Id         primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	EmployeeId primitive.ObjectID `bson:"employeeId" json:"employeeId"`
-	Type       LeaveType          `bson:"type" json:"type"`
-	StartDate  string             `bson:"startDate" json:"startDate"`
-	EndDate    string             `bson:"endDate" json:"endDate"`
-	Status     LeaveStatus        `bson:"status" json:"status"`
-	Reason     string             `bson:"reason" json:"reason"`
-	CreatedAt  time.Time          `bson:"createdAt" json:"createdAt"`
-	UpdatedAt  time.Time          `bson:"updatedAt" json:"updatedAt"`
+	Id        primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	Type      LeaveType          `bson:"type" json:"type" validate:"required"`
+	StartDate time.Time          `bson:"startDate" json:"startDate" validate:"required"`
+	EndDate   time.Time          `bson:"endDate" json:"endDate" validate:"required"`
+	Status    LeaveStatus        `bson:"status" json:"status" validate:"required"`
+	Reason    string             `bson:"reason" json:"reason"`
+	CreatedAt time.Time          `bson:"createdAt" json:"createdAt"`
+	UpdatedAt time.Time          `bson:"updatedAt" json:"updatedAt"`
 }
 
 // type LeaveData struct {
@@ -44,9 +43,3 @@ type LeaveInfo struct {
 // 	End      string `bson:"endDate" json:"endDate"`
 // 	Approved bool   `default:"false" bson:"approved" json:"approved"`
 // }
-
-type MetaLeaveInfo struct {
-	Username string      `bson:"username" json:"username"`
-	Approver string      `bson:"approver" json:"approver"`
-	Leaves   []LeaveInfo `bson:"leaves" json:"leaves"`
-}

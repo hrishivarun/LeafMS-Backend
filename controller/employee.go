@@ -4,12 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"LeafMS-BackEnd/database"
 	models "LeafMS-BackEnd/models"
 	"LeafMS-BackEnd/service"
-	"LeafMS-BackEnd/utils"
-
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 // ============================================================================
@@ -18,9 +14,13 @@ import (
 // ============================================================================
 // ============================================================================
 func HandleApply(w http.ResponseWriter, r *http.Request) {
-	var leaveApplication models.MetaLeaveInfo
+	var leaveApplication models.LeaveApplication
 	if err := service.JsonDecoderWrapper(r.Body, &leaveApplication); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if err := service.ValidateRequest(leaveApplication); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -49,39 +49,6 @@ func HandleApply(w http.ResponseWriter, r *http.Request) {
 
 // ============================================================================
 // ============================================================================
-// handle `view leaves`
-// ============================================================================
-// ============================================================================
-func HandleViewLeaves(w http.ResponseWriter, r *http.Request) {
-	var user models.Employee
-	if err := service.JsonDecoderWrapper(r.Body, &user); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	if loggedUsername, _ := r.Context().Value("username").(string); loggedUsername != user.Username {
-		http.Error(w, "You do not have access to this API! stop messing bruv", http.StatusForbidden)
-		return
-	}
-
-	data, err := database.DbConn.Find("leaves", bson.D{
-		{Key: "username", Value: user.Username}})
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	if data == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	leaves := utils.ReturnLeaves(data)
-	response, _ := json.MarshalIndent(leaves, "", "	")
-	w.Write(response)
-}
-
-// ============================================================================
-// ============================================================================
 // handle `cancel leaves`
 // ============================================================================
 // ============================================================================
@@ -91,29 +58,66 @@ func HandleCancelLeave(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	if err := service.ValidateRequest(cancelLeaveReq); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	if loggedUsername, _ := r.Context().Value("username").(string); loggedUsername != cancelLeaveReq.Username {
 		http.Error(w, "You do not have access to this API! stop messing bruv", http.StatusForbidden)
 		return
 	}
 
-	cancellationRes, err := service.CancelLeave(cancelLeaveReq)
+	result, err := service.CancelLeave(cancelLeaveReq)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	if cancellationRes.MatchedCount == 0 {
+	if result.MatchedCount == 0 {
 		w.WriteHeader(http.StatusNotFound)
-		response, _ := json.Marshal("No leave application with given leave ID")
+		response, _ := json.Marshal("No leave application with given leave ID exists for the user.")
 		w.Write(response)
 		return
-	} else {
-		w.WriteHeader(http.StatusOK)
 	}
 
-	response, _ := json.MarshalIndent(cancellationRes, "", "	")
+	response, _ := json.MarshalIndent(result, "", "	")
+	w.Write(response)
+}
+
+// ============================================================================
+// ============================================================================
+// handle `view leaves`
+// ============================================================================
+// ============================================================================
+func HandleViewLeaves(w http.ResponseWriter, r *http.Request) {
+	var viewReq models.ViewLeavesReq
+	if err := service.JsonDecoderWrapper(r.Body, &viewReq); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if err := service.ValidateRequest(viewReq); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if loggedUsername, _ := r.Context().Value("username").(string); loggedUsername != viewReq.Username {
+		http.Error(w, "You do not have access to this API! stop messing bruv", http.StatusForbidden)
+		return
+	}
+
+	data, err := service.ViewLeaves(viewReq)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if data == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	response, _ := json.MarshalIndent(data, "", "	")
 	w.Write(response)
 }
 

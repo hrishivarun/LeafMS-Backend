@@ -8,10 +8,10 @@ import (
 	models "LeafMS-BackEnd/models"
 )
 
-func ReturnLeaves(data []bson.Raw) []models.MetaLeaveInfo {
-	var leaves []models.MetaLeaveInfo
+func ReturnLeaves(data []bson.Raw) []models.LeaveInfo {
+	var leaves []models.LeaveInfo
 	for _, entry := range data {
-		var leave models.MetaLeaveInfo
+		var leave models.LeaveInfo
 		if err := bson.Unmarshal(entry, &leave); err != nil {
 			log.Fatal(
 				"The decoding of leaveApplication from raw bson document failed!\nError:-\n\n", err)

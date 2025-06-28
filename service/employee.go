@@ -15,7 +15,7 @@ import (
 // `leave apply`
 // ============================================================================
 // ============================================================================
-func ApplyForLeave(leaveApplication models.MetaLeaveInfo) (*mongo.UpdateResult, error) {
+func ApplyForLeave(leaveApplication models.LeaveApplication) (*mongo.UpdateResult, error) {
 	filteredLeaves, err := FilterHolidaysFromLeaveRequest(leaveApplication)
 	if err != nil {
 		return nil, err
@@ -49,7 +49,9 @@ func CancelLeave(cancelLeaveReq models.CancelLeavesReq) (*mongo.UpdateResult, er
 			{Key: "$pull", Value: bson.D{
 				{Key: "leaves", Value: bson.D{
 					{Key: "id", Value: bson.D{
-						{Key: "$in", Value: cancelLeaveReq.LeaveIds}}}}}}}})
+						{Key: "$in", Value: cancelLeaveReq.LeaveIds}}},
+					{Key: "status", Value: bson.D{
+						{Key: "$nin", Value: bson.A{models.Rejected, models.Cancelled}}}}}}}}})
 	if err != nil {
 		return nil, err
 	}
@@ -59,10 +61,29 @@ func CancelLeave(cancelLeaveReq models.CancelLeavesReq) (*mongo.UpdateResult, er
 
 // ============================================================================
 // ============================================================================
+// `view leaves`
+// ============================================================================
+// ============================================================================
+func ViewLeaves(viewReq models.ViewLeavesReq) ([]models.LeaveInfo, error) {
+	viewFilter := CreateViewLeavesFilter(viewReq)
+	data, err := database.DbConn.Find("leaves", viewFilter)
+	if err != nil {
+		return nil, err
+	}
+	if data == nil {
+		log.Fatal("No Leave entry found for given query")
+		return nil, nil
+	}
+
+	return utils.ReturnLeaves(data), nil
+}
+
+// ============================================================================
+// ============================================================================
 // `view team's leaves`
 // ============================================================================
 // ============================================================================
-func ViewTeamLeaveInfo(teamName string) ([]models.MetaLeaveInfo, error) {
+func ViewTeamLeaveInfo(teamName string) ([]models.LeaveInfo, error) {
 	teamPeepsRaw, err := database.DbConn.Find("employees", bson.D{
 		{Key: "team", Value: teamName}})
 
