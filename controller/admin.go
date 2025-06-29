@@ -17,21 +17,46 @@ import (
 // ============================================================================
 // ============================================================================
 func HandleViewEmployees(w http.ResponseWriter, r *http.Request) {
-	var admin models.Employee
-	if err := service.DecodeJson(r.Body, &admin); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
-		return
-	}
-
 	if loggedUsername, _ := r.Context().Value("username").(string); loggedUsername != service.Admin {
 		http.Error(w, "You do not have access to this API! stop messing bruv", http.StatusForbidden)
 		return
 	}
 
-	result, err := database.DbConn.Find("employees", bson.D{})
+	var employeesInfoReq models.EmployeesCrudReq
+	if err := service.DecodeJson(r.Body, &employeesInfoReq); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+	if err := service.ValidateRequest(employeesInfoReq); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	rawResult, err := database.DbConn.Find("employees", bson.D{{Key: "username", Value: bson.D{{Key: "$in", Value: employeesInfoReq.Usernames}}}})
 	if err != nil {
 		http.Error(w, "Something shitty happened here!!!", http.StatusInternalServerError)
 	}
+	result := database.ConvertRawBsonToEmployees(rawResult)
+	response, _ := json.MarshalIndent(result, "", " ")
+	w.Write(response)
+}
+
+// ============================================================================
+// ============================================================================
+// handle `view all employees`
+// ============================================================================
+// ============================================================================
+func HandleViewAllEmployees(w http.ResponseWriter, r *http.Request) {
+	if loggedUsername, _ := r.Context().Value("username").(string); loggedUsername != service.Admin {
+		http.Error(w, "You do not have access to this API! stop messing bruv", http.StatusForbidden)
+		return
+	}
+
+	rawResult, err := database.DbConn.Find("employees", bson.D{})
+	if err != nil {
+		http.Error(w, "Something shitty happened here!!!", http.StatusInternalServerError)
+	}
+	result := database.ConvertRawBsonToEmployees(rawResult)
 	response, _ := json.MarshalIndent(result, "", " ")
 	w.Write(response)
 }
@@ -52,6 +77,10 @@ func HandleRegisterEmployee(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
+	if err := service.ValidateRequest(newEmployee); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	result, err := database.DbConn.InsertOne("employees", newEmployee)
 	if err != nil {
@@ -66,22 +95,26 @@ func HandleRegisterEmployee(w http.ResponseWriter, r *http.Request) {
 
 // ============================================================================
 // ============================================================================
-// handle `remove employee`
+// handle `remove employees`
 // ============================================================================
 // ============================================================================
-func HandleRemoveEmployee(w http.ResponseWriter, r *http.Request) {
+func HandleRemoveEmployees(w http.ResponseWriter, r *http.Request) {
 	if loggedUsername, _ := r.Context().Value("username").(string); loggedUsername != service.Admin {
 		http.Error(w, "You do not have access to this API! stop messing bruv", http.StatusForbidden)
 		return
 	}
 
-	var employeeToDelete models.Employee
-	if err := service.DecodeJson(r.Body, &employeeToDelete); err != nil {
+	var employeesToDelete models.EmployeesCrudReq
+	if err := service.DecodeJson(r.Body, &employeesToDelete); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
+	if err := service.ValidateRequest(employeesToDelete); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-	result, err := database.DbConn.DeleteOne("employees", bson.D{{Key: "username", Value: employeeToDelete.Username}})
+	result, err := database.DbConn.DeleteMany("employees", bson.D{{Key: "username", Value: bson.D{{Key: "$in", Value: employeesToDelete.Usernames}}}})
 	if err != nil {
 		http.Error(w, "Something shitty happened here!!!", http.StatusInternalServerError)
 	}
@@ -98,14 +131,17 @@ func HandleRemoveEmployee(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 // ============================================================================
 func HandlePostHolidays(w http.ResponseWriter, r *http.Request) {
+	if loggedUsername, _ := r.Context().Value("username").(string); loggedUsername != service.Admin {
+		http.Error(w, "You do not have access to this API! stop messing bruv", http.StatusForbidden)
+		return
+	}
 	var postHolidayReq models.PostHoliday
 	if err := service.DecodeJson(r.Body, &postHolidayReq); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
-
-	if loggedUsername, _ := r.Context().Value("username").(string); loggedUsername != service.Admin {
-		http.Error(w, "You do not have access to this API! stop messing bruv", http.StatusForbidden)
+	if err := service.ValidateRequest(postHolidayReq); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 

@@ -78,7 +78,7 @@ func ValidateAdminCred(userToAuthorize models.Employee) (models.Employee, models
 }
 
 // function to validate the models.user
-func ValidateCred(userToAuthorize models.Employee) (models.Employee, models.LoginInfo) {
+func ValidateCred(userToAuthorize models.LoginReq) models.LoginInfo {
 	loginInfo := models.LoginInfo{
 		Username: userToAuthorize.Username,
 	}
@@ -88,10 +88,10 @@ func ValidateCred(userToAuthorize models.Employee) (models.Employee, models.Logi
 	if err != nil {
 		loginInfo.Status = http.StatusUnauthorized
 		log.Fatal("Failed authentication. Error:- \n\t", err)
-		return models.Employee{}, loginInfo
+		return loginInfo
 	}
 
-	var user models.Employee
+	var user models.LoginReq
 	err = bson.Unmarshal(data, &user)
 	if err != nil {
 		loginInfo.Status = http.StatusNotFound
@@ -100,19 +100,19 @@ func ValidateCred(userToAuthorize models.Employee) (models.Employee, models.Logi
 
 	if user.Username == "" {
 		loginInfo.Status = http.StatusNotFound
-		return user, loginInfo
+		return loginInfo
 	}
 
 	token, err := GenerateJWT(userToAuthorize.Username)
 	if err != nil {
 		log.Fatal("Failed to generate token")
 		loginInfo.Status = http.StatusInternalServerError
-		return models.Employee{}, loginInfo
+		return loginInfo
 	}
 
 	loginInfo.Status = http.StatusOK
 	loginInfo.Token = token
-	return userToAuthorize, loginInfo
+	return loginInfo
 }
 
 func ValidateApprover(employeeUsername string, approverUsername string) bool {
@@ -125,5 +125,5 @@ func ValidateApprover(employeeUsername string, approverUsername string) bool {
 		log.Fatal("what the fuck? why is there a problem deserializing employee from database entry?")
 		return false
 	}
-	return applierInfo.Approver == approverUsername
+	return applierInfo.ApproverUserName == approverUsername
 }

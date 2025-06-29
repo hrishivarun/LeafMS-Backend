@@ -18,17 +18,21 @@ func HandleViewLeaveApplications(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
+	if err := service.ValidateRequest(filter); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	if loggedUsername, _ := r.Context().Value("username").(string); loggedUsername != filter.ApproverName {
 		http.Error(w, "You do not have access to this API! stop messing bruv", http.StatusUnauthorized)
 		return
 	}
+
 	data, err := service.ViewLeaveApplications(filter)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if data == nil || len(data) == 0 {
+	if data == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -45,6 +49,10 @@ func HandleLeaveApproval(w http.ResponseWriter, r *http.Request) {
 	var leaveApplications models.ResolveLeaveReq
 	if err := service.DecodeJson(r.Body, &leaveApplications); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if err := service.ValidateRequest(leaveApplications); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 

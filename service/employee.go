@@ -82,9 +82,18 @@ func ViewLeaves(viewReq models.ViewLeavesReq) ([]models.LeaveInfo, error) {
 // `view team's leaves`
 // ============================================================================
 // ============================================================================
-func ViewTeamLeaveInfo(teamName string) ([]models.LeaveInfo, error) {
+func ViewTeamLeaveInfo(employeeUsername string) ([]models.LeaveInfo, error) {
+	userInfoRaw, err := database.DbConn.FindOne("employees", bson.D{{Key: "username", Value: employeeUsername}})
+	if err != nil {
+		return nil, err
+	}
+	var userInfo models.Employee
+	if err := bson.Unmarshal(userInfoRaw, &userInfo); err != nil {
+		log.Fatal("The decoding of employee from raw bson document failed!\nError:-\n\n", err)
+		return nil, err
+	}
 	teamPeepsRaw, err := database.DbConn.Find("employees", bson.D{
-		{Key: "team", Value: teamName}})
+		{Key: "team", Value: userInfo.Team}})
 
 	if err != nil {
 		return nil, err

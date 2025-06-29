@@ -3,16 +3,16 @@ package models
 import "go.mongodb.org/mongo-driver/bson/primitive"
 
 type Employee struct {
-	Id              primitive.ObjectID `bson:"id" json:"id"`
-	Username        string             `bson:"username" json:"username" validate:"required"`
-	Password        string             `bson:"password" json:"password" validate:"required"`
-	FirstName       string             `bson:"firstName" json:"firstName" validate:"required"`
-	MiddleName      string             `bson:"middleName,omitempty" json:"middleName,omitempty"`
-	LastName        string             `bson:"lastName" json:"lastName"`
-	Team            string             `bson:"team" json:"team" validate:"required"`
-	Designation     string             `bson:"designation" json:"designation" validate:"required"`
-	Approver        string             `bson:"approver" json:"approver" validate:"required"`
-	TotalLeaveCount int                `bson:"leavesCount" json:"leavesCount" validate:"required"`
+	Id               primitive.ObjectID `bson:"id" json:"id"`
+	Username         string             `bson:"username" json:"username" validate:"required"`
+	Password         string             `bson:"password" json:"password" validate:"required"`
+	FirstName        string             `bson:"firstName" json:"firstName" validate:"required"`
+	MiddleName       string             `bson:"middleName,omitempty" json:"middleName,omitempty"`
+	LastName         string             `bson:"lastName" json:"lastName"`
+	Team             string             `bson:"team" json:"team" validate:"required"`
+	Designation      string             `bson:"designation" json:"designation" validate:"required"`
+	ApproverUserName string             `bson:"approver" json:"approver" validate:"required"`
+	TotalLeaveCount  int                `bson:"leavesCount" json:"leavesCount" validate:"required"`
 }
 
 type LoginInfo struct {
@@ -29,6 +29,11 @@ type LeaveCount struct {
 	Maternity   int `bson:"maternity" json:"maternity"`
 	Paternity   int `bson:"paternity" json:"paternity"`
 	TotalLeaves int `bson:"totalCount" json:"totalCount"`
+}
+
+type LoginReq struct {
+	Username string `bson:"username" json:"username" validate:"required"`
+	Password string `bson:"password" json:"password" validate:"required"`
 }
 
 // var defaultLeaveCount = LeaveCount{

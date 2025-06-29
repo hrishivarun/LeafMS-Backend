@@ -112,7 +112,7 @@ func HandleViewLeaves(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	if data == nil || len(data) == 0 {
+	if data == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -127,18 +127,9 @@ func HandleViewLeaves(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 // ============================================================================
 func HandleViewTeamLeaves(w http.ResponseWriter, r *http.Request) {
-	var user models.Employee
-	if err := service.DecodeJson(r.Body, &user); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
+	loggedUsername, _ := r.Context().Value("username").(string)
 
-	if loggedUsername, _ := r.Context().Value("username").(string); loggedUsername != user.Username {
-		http.Error(w, "You do not have access to this API! stop messing bruv", http.StatusForbidden)
-		return
-	}
-
-	data, err := service.ViewTeamLeaveInfo(user.Team)
+	data, err := service.ViewTeamLeaveInfo(loggedUsername)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
@@ -159,6 +150,10 @@ func HandleViewHolidays(w http.ResponseWriter, r *http.Request) {
 	var filter models.HolidaysFilter
 	if err := service.DecodeJson(r.Body, &filter); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if err := service.ValidateRequest(filter); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 

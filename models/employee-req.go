@@ -19,7 +19,7 @@ type ViewLeavesReq struct {
 }
 
 type HolidaysFilter struct {
-	Country string `bson:"country" json:"country"`
+	Country string `bson:"country" json:"country" validate:"required"`
 	Year    int    `bson:"year" json:"year"`
 	Month   int    `bson:"month" json:"month"`
 }

@@ -26,8 +26,7 @@ func ConvertRawBsonToEmployees(data []bson.Raw) []models.Employee {
 	for _, entry := range data {
 		var employee models.Employee
 		if err := bson.Unmarshal(entry, &employee); err != nil {
-			log.Fatal(
-				"The decoding of employee from raw bson document failed!\nError:-\n\n", err)
+			log.Fatal("The decoding of employee from raw bson document failed!\nError:-\n\n", err)
 		}
 		employees = append(employees, employee)
 	}

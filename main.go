@@ -20,23 +20,25 @@ func main() {
 	routes.HandleFunc("/login", ctrlr.HandleLogin).Methods("GET")
 	routes.HandleFunc("/admin-login", ctrlr.HandleAdminLogin).Methods("GET")
 
+	adminRoute := routes.NewRoute().Subrouter()
+	adminRoute.Use(ctrlr.HandleValidateAdminAuth)
+	adminRoute.HandleFunc("view-employees", ctrlr.HandleViewEmployees).Methods("GET")
+	adminRoute.HandleFunc("view-all-employees", ctrlr.HandleViewAllEmployees).Methods("GET")
+	adminRoute.HandleFunc("register-employees", ctrlr.HandleRegisterEmployee).Methods("POST")
+	adminRoute.HandleFunc("remove-employees", ctrlr.HandleRemoveEmployees).Methods("DELETE")
+	adminRoute.HandleFunc("post-holidays", ctrlr.HandlePostHolidays).Methods("POST")
+
 	authRoute := routes.NewRoute().Subrouter()
 	authRoute.Use(ctrlr.HandleValidateAuth)
 	authRoute.HandleFunc("/apply-leave", ctrlr.HandleApply).Methods("POST")
 	authRoute.HandleFunc("/cancel-leave", ctrlr.HandleCancelLeave).Methods("POST")
 	authRoute.HandleFunc("/view-leaves", ctrlr.HandleViewLeaves).Methods("GET")
-	authRoute.HandleFunc("/view-team-leaves", ctrlr.HandleViewTeamLeaves).Methods(("GET"))
-	authRoute.HandleFunc("/view-applications", ctrlr.HandleViewLeaveApplications).Methods(("GET"))
+	authRoute.HandleFunc("/view-team-leaves", ctrlr.HandleViewTeamLeaves).Methods("GET")
+	authRoute.HandleFunc("/view-applications", ctrlr.HandleViewLeaveApplications).Methods("GET")
 	authRoute.HandleFunc("/approve-leave", ctrlr.HandleLeaveApproval).Methods("PATCH")
 	authRoute.HandleFunc("/view-holidays", ctrlr.HandleViewHolidays).Methods("GET")
 	// a `/me?` api for personal details?
 
-	adminRoute := routes.NewRoute().Subrouter()
-	adminRoute.Use(ctrlr.HandleValidateAdminAuth)
-	authRoute.HandleFunc("view-employees", ctrlr.HandleViewEmployees).Methods("GET")
-	authRoute.HandleFunc("register-employees", ctrlr.HandleRegisterEmployee).Methods("POST")
-	authRoute.HandleFunc("remove-employees", ctrlr.HandleRemoveEmployee).Methods("DELETE")
-	authRoute.HandleFunc("post-holidays", ctrlr.HandlePostHolidays).Methods("POST")
 	// delete holiday?
 
 	http.ListenAndServe(":8080", routes)

@@ -13,15 +13,19 @@ import (
 // ============================================================================
 // ============================================================================
 func HandleLogin(w http.ResponseWriter, r *http.Request) {
-	var user models.Employee
-	if err := service.DecodeJson(r.Body, &user); err != nil {
+	var loginReq models.LoginReq
+	if err := service.DecodeJson(r.Body, &loginReq); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
+	if err := service.ValidateRequest(loginReq); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-	authenticatedUser, loginInfo := service.ValidateCred(user)
-	if authenticatedUser.Username == "" || loginInfo.Status != http.StatusOK {
-		http.Error(w, "Error occured", loginInfo.Status)
+	loginInfo := service.ValidateCred(loginReq)
+	if loginInfo.Username == "" || loginInfo.Status != http.StatusOK {
+		http.Error(w, "Error occured in VALIDATION!!", loginInfo.Status)
 		return
 	}
 
@@ -38,17 +42,22 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 // ============================================================================
 func HandleAdminLogin(w http.ResponseWriter, r *http.Request) {
-	var user models.Employee
-	if err := service.DecodeJson(r.Body, &user); err != nil {
+	var adminLoginReq models.LoginReq
+	if err := service.DecodeJson(r.Body, &adminLoginReq); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
-	if user.Username != service.Admin {
+	if err := service.ValidateRequest(adminLoginReq); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if adminLoginReq.Username != service.Admin {
 		http.Error(w, "You do not have access to this API! stop messing bruv", http.StatusForbidden)
 		return
 	}
-	authenticatedUser, loginInfo := service.ValidateCred(user)
-	if authenticatedUser.Username == "" || loginInfo.Status != http.StatusOK {
+	loginInfo := service.ValidateCred(adminLoginReq)
+	if adminLoginReq.Username == "" || loginInfo.Status != http.StatusOK {
 		http.Error(w, "Error occured", loginInfo.Status)
 		return
 	}
