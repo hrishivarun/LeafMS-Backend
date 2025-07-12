@@ -92,7 +92,7 @@ func HandleCancelLeave(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 // ============================================================================
 func HandleViewLeaves(w http.ResponseWriter, r *http.Request) {
-	var viewReq models.ViewLeavesReq
+	var viewReq models.ViewApplicationsReq
 	if err := service.DecodeJson(r.Body, &viewReq); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -102,7 +102,7 @@ func HandleViewLeaves(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if loggedUsername, _ := r.Context().Value("username").(string); loggedUsername != viewReq.Username {
+	if loggedUsername, _ := r.Context().Value("username").(string); loggedUsername != *viewReq.Username {
 		http.Error(w, "You do not have access to this API! stop messing bruv", http.StatusForbidden)
 		return
 	}
@@ -127,9 +127,19 @@ func HandleViewLeaves(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 // ============================================================================
 func HandleViewTeamLeaves(w http.ResponseWriter, r *http.Request) {
+	var viewReq models.ViewApplicationsReq
+	if err := service.DecodeJson(r.Body, &viewReq); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if err := service.ValidateRequest(viewReq); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	loggedUsername, _ := r.Context().Value("username").(string)
 
-	data, err := service.ViewTeamLeaveInfo(loggedUsername)
+	data, err := service.ViewTeamLeaveInfo(loggedUsername, viewReq)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}

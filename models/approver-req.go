@@ -1,11 +1,14 @@
 package models
 
-type ViewApplications struct {
-	ApproverName    string `bson:"approverName" json:"approverName"`
-	IsLeaveAprroved *bool  `bson:"isLeaveAprroved" json:"isLeaveAprroved"`
-}
+// type ViewApplicationsReq struct {
+// 	EmployeeUsername *string `bson:"employeeUsername" json:"employeeUsername"`
+// 	LeaveType        *string `bson:"leaveType" json:"leaveType"`
+// 	Year             *int    `bson:"year" json:"year"`
+// 	Month            *int    `bson:"month" json:"month"`
+// 	Status           *string `bson:"status" json:"status"`
+// }
 
 type ResolveLeaveReq struct {
-	Username string      `bson:"username" json:"username"`
+	Username *string     `bson:"username" json:"username"`
 	Leaves   []LeaveInfo `bson:"leaves" json:"leaves"`
 }

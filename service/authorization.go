@@ -29,7 +29,7 @@ func GenerateJWT(username string) (string, error) {
 }
 
 func VerifyToken(tokenString string) (*Claims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (any, error) {
 		return JWTSecretKey, nil
 	})
 
@@ -50,7 +50,8 @@ func ValidateAdminCred(userToAuthorize models.Employee) (models.Employee, models
 		{Key: "password", Value: userToAuthorize.Password}})
 	if err != nil {
 		loginInfo.Status = http.StatusUnauthorized
-		log.Fatal("Failed authentication. Error:- \n\t", err)
+		log.SetPrefix("WARNING: ")
+		log.Println("Failed authentication. Error:- \n\t", err)
 		return models.Employee{}, loginInfo
 	}
 
@@ -58,7 +59,8 @@ func ValidateAdminCred(userToAuthorize models.Employee) (models.Employee, models
 	err = bson.Unmarshal(data, &user)
 	if err != nil {
 		loginInfo.Status = http.StatusNotFound
-		log.Fatal("Couldn't unwrap the user data recieved from mongoDB.\nError:-\n\n", err)
+		log.SetPrefix("WARNING: ")
+		log.Println("Couldn't unwrap the user data recieved from mongoDB.\nError:-\n\n", err)
 	}
 
 	if user.Username == "" {
@@ -68,7 +70,8 @@ func ValidateAdminCred(userToAuthorize models.Employee) (models.Employee, models
 
 	token, err := GenerateJWT(userToAuthorize.Username)
 	if err != nil {
-		log.Fatal("Failed to generate token")
+		log.SetPrefix("WARNING: ")
+		log.Println("Failed to generate token")
 		loginInfo.Status = http.StatusInternalServerError
 		return models.Employee{}, loginInfo
 	}
@@ -87,7 +90,8 @@ func ValidateCred(userToAuthorize models.LoginReq) models.LoginInfo {
 		{Key: "password", Value: userToAuthorize.Password}})
 	if err != nil {
 		loginInfo.Status = http.StatusUnauthorized
-		log.Fatal("Failed authentication. Error:- \n\t", err)
+		log.SetPrefix("WARNING: ")
+		log.Println("Failed authentication. Error:- \n\t", err)
 		return loginInfo
 	}
 
@@ -95,7 +99,8 @@ func ValidateCred(userToAuthorize models.LoginReq) models.LoginInfo {
 	err = bson.Unmarshal(data, &user)
 	if err != nil {
 		loginInfo.Status = http.StatusNotFound
-		log.Fatal("Couldn't unwrap the user data recieved from mongoDB.\nError:-\n\n", err)
+		log.SetPrefix("WARNING: ")
+		log.Println("Couldn't unwrap the user data recieved from mongoDB.\nError:-\n\n", err)
 	}
 
 	if user.Username == "" {
@@ -105,7 +110,8 @@ func ValidateCred(userToAuthorize models.LoginReq) models.LoginInfo {
 
 	token, err := GenerateJWT(userToAuthorize.Username)
 	if err != nil {
-		log.Fatal("Failed to generate token")
+		log.SetPrefix("WARNING: ")
+		log.Println("Failed to generate token")
 		loginInfo.Status = http.StatusInternalServerError
 		return loginInfo
 	}
@@ -115,14 +121,18 @@ func ValidateCred(userToAuthorize models.LoginReq) models.LoginInfo {
 	return loginInfo
 }
 
-func ValidateApprover(employeeUsername string, approverUsername string) bool {
-	applierInfoRaw, err := database.DbConn.FindOne("employees", bson.D{{Key: "username", Value: employeeUsername}})
+func ValidateApprover(employeeUsername *string, approverUsername string) bool {
+	if employeeUsername == nil {
+		return true
+	}
+	applierInfoRaw, err := database.DbConn.FindOne("employees", bson.D{{Key: "username", Value: *employeeUsername}})
 	if err != nil {
 		return false
 	}
 	var applierInfo models.Employee
 	if err = bson.Unmarshal(applierInfoRaw, &applierInfo); err != nil {
-		log.Fatal("what the fuck? why is there a problem deserializing employee from database entry?")
+		log.SetPrefix("WARNING: ")
+		log.Println("what the fuck? why is there a problem deserializing employee from database entry?")
 		return false
 	}
 	return applierInfo.ApproverUserName == approverUsername

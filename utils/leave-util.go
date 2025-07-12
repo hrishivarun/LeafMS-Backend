@@ -67,7 +67,7 @@ func FetchHolidaysBetweenRequestedLeave(leave models.LeaveInfo) ([]models.Holida
 		return []models.Holiday{}, err
 	}
 
-	holidaysBson, err := DbConn.Find("publicHolidays", bson.D{
+	holidaysBson, err := database.DbConn.Find("publicHolidays", bson.D{
 		{Key: "$and", Value: bson.A{
 			bson.D{{Key: "date.datetime.year", Value: bson.D{
 				{Key: "$gte", Value: leaveStartDate.Year},

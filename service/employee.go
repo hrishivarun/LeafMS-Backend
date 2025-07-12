@@ -7,6 +7,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // ============================================================================
@@ -20,19 +21,23 @@ func ApplyForLeave(leaveApplication models.LeaveApplication) (*mongo.UpdateResul
 		return nil, err
 	}
 
-	result, err := database.DbConn.UpdateOne("leaves",
-		bson.D{
-			{Key: "username", Value: filteredLeaves.Username}},
-		bson.D{
-			{Key: "$push", Value: bson.D{
-				{Key: "leaves", Value: bson.D{
-					{Key: "$each", Value: filteredLeaves.Leaves}}}}}})
+	if len(filteredLeaves.Leaves) > 0 {
+		opts := options.Update().SetUpsert(true)
+		result, err := database.DbConn.UpdateOne("leaves",
+			bson.D{
+				{Key: "username", Value: filteredLeaves.Username}},
+			bson.D{
+				{Key: "$push", Value: bson.D{
+					{Key: "leaves", Value: bson.D{
+						{Key: "$each", Value: filteredLeaves.Leaves}}}}}}, opts)
 
-	if err != nil {
-		log.Println("Encountered error while persisting applied leaves in Database. Err : ", err)
-		return nil, err
+		if err != nil {
+			log.Println("Encountered error while persisting applied leaves in Database. Err : ", err)
+			return nil, err
+		}
+		return result, nil
 	}
-	return result, nil
+	return nil, nil
 }
 
 // ============================================================================
@@ -41,16 +46,19 @@ func ApplyForLeave(leaveApplication models.LeaveApplication) (*mongo.UpdateResul
 // ============================================================================
 // ============================================================================
 func CancelLeave(cancelLeaveReq models.CancelLeavesReq) (*mongo.UpdateResult, error) {
-	cancellationResult, err := database.DbConn.UpdateOne("leaves",
-		bson.D{
-			{Key: "username", Value: cancelLeaveReq.Username}},
-		bson.D{
-			{Key: "$pull", Value: bson.D{
-				{Key: "leaves", Value: bson.D{
-					{Key: "id", Value: bson.D{
-						{Key: "$in", Value: cancelLeaveReq.LeaveIds}}},
-					{Key: "status", Value: bson.D{
-						{Key: "$nin", Value: bson.A{models.Rejected, models.Cancelled}}}}}}}}})
+	update := bson.D{
+		{Key: "$set", Value: bson.D{
+			{Key: "leaves.$[elem].status", Value: models.Cancelled},
+		}},
+	}
+	arrayFilters := options.Update().SetArrayFilters(options.ArrayFilters{
+		Filters: []any{
+			bson.D{{Key: "elem.id", Value: bson.D{{Key: "$in", Value: cancelLeaveReq.LeaveIds}}}},
+			bson.D{{Key: "elem.status", Value: bson.D{{Key: "$nin", Value: bson.A{models.Rejected, models.Cancelled}}}}},
+		},
+	})
+
+	cancellationResult, err := database.DbConn.UpdateOne("leaves", bson.D{{Key: "username", Value: cancelLeaveReq.Username}}, update, arrayFilters)
 	if err != nil {
 		return nil, err
 	}
@@ -63,14 +71,20 @@ func CancelLeave(cancelLeaveReq models.CancelLeavesReq) (*mongo.UpdateResult, er
 // `view leaves`
 // ============================================================================
 // ============================================================================
-func ViewLeaves(viewReq models.ViewLeavesReq) ([]models.LeaveInfo, error) {
-	viewFilter := CreateViewLeavesFilter(viewReq)
-	data, err := database.DbConn.Find("leaves", viewFilter)
+func ViewLeaves(viewReq models.ViewApplicationsReq) ([]models.LeaveInfo, error) {
+	var leavePipeline mongo.Pipeline
+	if viewReq.Username != nil {
+		leavePipeline = AddUsernameFilterToDbPipeline(leavePipeline, []string{*viewReq.Username})
+	}
+	leavePipeline = BuildLeaveFilterPipeline(leavePipeline, viewReq)
+	leavePipeline = FlattenDbResult(leavePipeline, "$leaves")
+	data, err := database.DbConn.Aggregate("leaves", leavePipeline)
 	if err != nil {
 		return nil, err
 	}
 	if data == nil {
-		log.Fatal("No Leave entry found for given query")
+		log.SetPrefix("WARNING: ")
+		log.Println("No Leave entry found for given query")
 		return nil, nil
 	}
 
@@ -82,61 +96,50 @@ func ViewLeaves(viewReq models.ViewLeavesReq) ([]models.LeaveInfo, error) {
 // `view team's leaves`
 // ============================================================================
 // ============================================================================
-func ViewTeamLeaveInfo(employeeUsername string) ([]models.LeaveInfo, error) {
+func ViewTeamLeaveInfo(employeeUsername string, viewReq models.ViewApplicationsReq) ([]models.LeaveInfo, error) {
 	userInfoRaw, err := database.DbConn.FindOne("employees", bson.D{{Key: "username", Value: employeeUsername}})
 	if err != nil {
 		return nil, err
 	}
-	var userInfo models.Employee
-	if err := bson.Unmarshal(userInfoRaw, &userInfo); err != nil {
-		log.Fatal("The decoding of employee from raw bson document failed!\nError:-\n\n", err)
-		return nil, err
-	}
-	teamPeepsRaw, err := database.DbConn.Find("employees", bson.D{
-		{Key: "team", Value: userInfo.Team}})
 
+	var leavePipeline mongo.Pipeline
+	if viewReq.Username == nil {
+		var userInfo models.Employee
+		if err := bson.Unmarshal(userInfoRaw, &userInfo); err != nil {
+			log.SetPrefix("WARNING: ")
+			log.Println("The decoding of employee from raw bson document failed!\nError:-\n\n", err)
+			return nil, err
+		}
+
+		teamPeepsRaw, err := database.DbConn.Find("employees", bson.D{
+			{Key: "team", Value: userInfo.Team}})
+
+		if err != nil {
+			return nil, err
+		}
+		teamPeeps := database.ConvertRawBsonToEmployees(teamPeepsRaw)
+
+		var peepsUsername []string
+		for _, peep := range teamPeeps {
+			peepsUsername = append(peepsUsername, peep.Username)
+		}
+		leavePipeline = AddUsernameFilterToDbPipeline(leavePipeline, peepsUsername)
+
+	} else {
+		leavePipeline = AddUsernameFilterToDbPipeline(leavePipeline, []string{*viewReq.Username})
+	}
+	leavePipeline = BuildLeaveFilterPipeline(leavePipeline, viewReq)
+	leavePipeline = FlattenDbResult(leavePipeline, "$leaves")
+	data, err := database.DbConn.Aggregate("leaves", leavePipeline)
 	if err != nil {
 		return nil, err
 	}
-	teamPeeps := database.ConvertRawBsonToEmployees(teamPeepsRaw)
-	var peepsUsername []string
-	for _, peep := range teamPeeps {
-		peepsUsername = append(peepsUsername, peep.Username)
-	}
-
-	data, err := database.DbConn.Find("leaves", bson.D{
-		{Key: "username", Value: bson.D{{Key: "$in", Value: peepsUsername}}}})
-
-	if err != nil {
-		return nil, err
+	if data == nil {
+		log.SetPrefix("WARNING: ")
+		log.Println("No Leave entry found for given query")
+		return nil, nil
 	}
 
 	leaves := database.ConvertRawBsonToLeaves(data)
 	return leaves, nil
-}
-
-// ============================================================================
-// ============================================================================
-// `view holidays`
-// ============================================================================
-// ============================================================================
-func ViewHolidays(filter models.HolidaysFilter) ([]models.Holiday, error) {
-	// Build query dynamically
-	query := bson.D{
-		{Key: "country.id", Value: filter.Country},
-		{Key: "date.datetime.year", Value: filter.Year},
-	}
-
-	// Only add month if provided (non-zero)
-	if filter.Month != 0 {
-		query = append(query, bson.E{Key: "date.datetime.month", Value: filter.Month})
-	}
-
-	holidaysBson, err := database.DbConn.Find("publicHolidays", query)
-	if err != nil {
-		return nil, err
-	}
-
-	holidays := database.ConvertRawBsonToHolidays(holidaysBson)
-	return holidays, nil
 }

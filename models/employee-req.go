@@ -1,6 +1,8 @@
 package models
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import (
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
 type LeaveApplication struct {
 	Username string      `bson:"username" json:"username" validate:"required"`
@@ -12,10 +14,12 @@ type CancelLeavesReq struct {
 	LeaveIds []primitive.ObjectID `bson:"leaveIds" json:"leaveIds" validate:"required"`
 }
 
-type ViewLeavesReq struct {
-	Username string `bson:"username" json:"username" validate:"required"`
-	Year     int    `bson:"year" json:"year"`
-	Month    int    `bson:"month" json:"month"`
+type ViewApplicationsReq struct {
+	Username  *string `bson:"employeeUsername" json:"employeeUsername"`
+	LeaveType *string `bson:"leaveType" json:"leaveType"`
+	Year      *int    `bson:"year" json:"year"`
+	Month     *int    `bson:"month" json:"month"`
+	Status    *string `bson:"status" json:"status"`
 }
 
 type HolidaysFilter struct {

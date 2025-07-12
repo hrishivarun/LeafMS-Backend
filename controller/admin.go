@@ -4,7 +4,6 @@ import (
 	"LeafMS-BackEnd/database"
 	"LeafMS-BackEnd/models"
 	"LeafMS-BackEnd/service"
-	"LeafMS-BackEnd/utils"
 	"encoding/json"
 	"net/http"
 
@@ -89,6 +88,14 @@ func HandleRegisterEmployee(w http.ResponseWriter, r *http.Request) {
 	if result.InsertedID == 0 {
 		http.Error(w, "For some reason, the employee creation did not go through?", http.StatusInternalServerError)
 	}
+
+	leaveDocCreationResult, err := database.DbConn.InsertOne("leaves", models.LeaveDoc{Username: newEmployee.Username, Leaves: []models.LeaveInfo{}})
+	if err != nil {
+		http.Error(w, "Something shitty happened here!!!", http.StatusInternalServerError)
+	}
+	if leaveDocCreationResult.InsertedID == 0 {
+		http.Error(w, "For some reason, the employee creation did not go through?", http.StatusInternalServerError)
+	}
 	response, _ := json.MarshalIndent(result, "", " ")
 	w.Write(response)
 }
@@ -121,6 +128,14 @@ func HandleRemoveEmployees(w http.ResponseWriter, r *http.Request) {
 	if result.DeletedCount == 0 {
 		http.Error(w, "Wtf bro? no employee was deleted, what are you doin?? you sure this is the username", http.StatusNotFound)
 	}
+
+	leaveDocDeletionRes, err := database.DbConn.DeleteMany("leaves", bson.D{{Key: "username", Value: bson.D{{Key: "$in", Value: employeesToDelete.Usernames}}}})
+	if err != nil {
+		http.Error(w, "Something shitty happened here!!!", http.StatusInternalServerError)
+	}
+	if leaveDocDeletionRes.DeletedCount == 0 {
+		http.Error(w, "Wtf bro? no employee was deleted, what are you doin?? you sure this is the username", http.StatusNotFound)
+	}
 	response, _ := json.MarshalIndent(result, "", " ")
 	w.Write(response)
 }
@@ -145,7 +160,7 @@ func HandlePostHolidays(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	postHolidayRes, err := utils.PersistPublicHolidays(postHolidayReq.Year, postHolidayReq.Country)
+	postHolidayRes, err := service.PersistPublicHolidays(postHolidayReq.Year, postHolidayReq.Country)
 	if err != nil {
 		http.Error(w, "oopsie, holiday write request did not GO THORUGH SIR!!!", http.StatusInternalServerError)
 		return

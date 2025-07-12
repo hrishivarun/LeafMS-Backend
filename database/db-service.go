@@ -57,21 +57,23 @@ func ConnectDB() *Database {
 	}
 }
 
-func (db Database) InsertOne(collectionName string, document interface{}) (*mongo.InsertOneResult, error) {
+func (db Database) InsertOne(collectionName string, document any) (*mongo.InsertOneResult, error) {
 	collection := db.Database.Collection(collectionName)
 	result, err := collection.InsertOne(db.Context, document)
 	if err != nil {
-		log.Fatal("Could not insert document. Error:-\n\t", err)
+		log.SetPrefix("WARNING: ")
+		log.Println("Could not insert document. Error:-\n\t", err)
 		return nil, err
 	}
 	return result, nil
 }
 
-func (db Database) InsertMany(collectionName string, document []interface{}) (*mongo.InsertManyResult, error) {
+func (db Database) InsertMany(collectionName string, document []any) (*mongo.InsertManyResult, error) {
 	collection := db.Database.Collection(collectionName)
 	result, err := collection.InsertMany(db.Context, document)
 	if err != nil {
-		log.Fatal("Could not insert documents. Error:-\n\t", err)
+		log.SetPrefix("WARNING: ")
+		log.Println("Could not insert documents. Error:-\n\t", err)
 		return nil, err
 	}
 	return result, nil
@@ -83,7 +85,8 @@ func (db Database) FindOne(collectionName string, filter bson.D) (bson.Raw, erro
 	collection := db.Database.Collection(collectionName)
 	err := collection.FindOne(db.Context, filter).Decode(&data)
 	if err != nil {
-		log.Fatal("The FindOne query did not return a result. Error:-\n\t", err)
+		log.SetPrefix("WARNING: ")
+		log.Println("The FindOne query did not return a result. Error:-\n\t", err)
 		return nil, err
 	}
 
@@ -96,7 +99,8 @@ func (db Database) Find(collectionName string, filter bson.D) ([]bson.Raw, error
 	collection := db.Database.Collection(collectionName)
 	resultCursor, err := collection.Find(db.Context, filter)
 	if err != nil {
-		log.Fatal("The Find query did not return a cursor. Error:-\n\t", err)
+		log.SetPrefix("WARNING: ")
+		log.Println("The Find query did not return a cursor. Error:-\n\t", err)
 		return nil, err
 	}
 
@@ -107,21 +111,23 @@ func (db Database) Find(collectionName string, filter bson.D) ([]bson.Raw, error
 	return data, nil
 }
 
-func (db Database) UpdateOne(collectionName string, filter bson.D, update interface{}) (*mongo.UpdateResult, error) {
+func (db Database) UpdateOne(collectionName string, filter bson.D, update any, updateOption *options.UpdateOptions) (*mongo.UpdateResult, error) {
 	collection := db.Database.Collection(collectionName)
-	res, err := collection.UpdateOne(db.Context, filter, update)
+	res, err := collection.UpdateOne(db.Context, filter, update, updateOption)
 	if err != nil {
-		log.Fatal("Could not update the entry for filter:- ", filter)
+		log.SetPrefix("WARNING: ")
+		log.Println("Could not update the entry for filter:- ", filter)
 		return nil, err
 	}
 	return res, nil
 }
 
-func (db Database) UpdateMany(collectionName string, filter bson.D, updates []interface{}) (*mongo.UpdateResult, error) {
+func (db Database) UpdateMany(collectionName string, filter bson.D, updates any) (*mongo.UpdateResult, error) {
 	collection := db.Database.Collection(collectionName)
 	res, err := collection.UpdateMany(db.Context, filter, updates)
 	if err != nil {
-		log.Fatal("Could not update the entries for filter:- ", filter)
+		log.SetPrefix("WARNING: ")
+		log.Println("Could not update the entries for filter:- ", filter)
 		return nil, err
 	}
 	return res, nil
@@ -131,8 +137,10 @@ func (db Database) DeleteOne(collectionName string, filter bson.D) (*mongo.Delet
 	collection := db.Database.Collection(collectionName)
 	res, err := collection.DeleteOne(db.Context, filter)
 	if err != nil {
-		log.Fatal("Could not delete entry for filter:- ", filter)
-		log.Fatal("Err:- ", err)
+		log.SetPrefix("WARNING: ")
+		log.Println("Could not delete entry for filter:- ", filter)
+		log.SetPrefix("WARNING: ")
+		log.Println("Err:- ", err)
 		return nil, err
 	}
 	return res, nil
@@ -142,8 +150,10 @@ func (db Database) DeleteMany(collectionName string, filter bson.D) (*mongo.Dele
 	collection := db.Database.Collection(collectionName)
 	res, err := collection.DeleteMany(db.Context, filter)
 	if err != nil {
-		log.Fatal("Could not delete entries for filter:- ", filter)
-		log.Fatal("Err:- ", err)
+		log.SetPrefix("WARNING: ")
+		log.Println("Could not delete entries for filter:- ", filter)
+		log.SetPrefix("WARNING: ")
+		log.Println("Err:- ", err)
 		return nil, err
 	}
 	return res, nil
@@ -154,7 +164,8 @@ func (db Database) Aggregate(collectioName string, pipeline mongo.Pipeline) ([]b
 	collection := db.Database.Collection((collectioName))
 	resultCursor, err := collection.Aggregate(db.Context, pipeline)
 	if err != nil {
-		log.Fatal("Could not perform aggregate operation with pipeline:- ", pipeline)
+		log.SetPrefix("WARNING: ")
+		log.Println("Could not perform aggregate operation with pipeline:- ", pipeline)
 		return nil, err
 	}
 

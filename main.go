@@ -17,8 +17,8 @@ func main() {
 
 	os.Setenv("JWT_SECRET", "secret-key?what's-that-girl?shake,-that,-ass-for-me.shake-it-girl!!!")
 	routes := mux.NewRouter()
-	routes.HandleFunc("/login", ctrlr.HandleLogin).Methods("GET")
-	routes.HandleFunc("/admin-login", ctrlr.HandleAdminLogin).Methods("GET")
+	routes.HandleFunc("/login", ctrlr.HandleLogin).Methods("POST")
+	routes.HandleFunc("/admin-login", ctrlr.HandleAdminLogin).Methods("POST")
 
 	adminRoute := routes.NewRoute().Subrouter()
 	adminRoute.Use(ctrlr.HandleValidateAdminAuth)

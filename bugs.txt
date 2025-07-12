@@ -1,0 +1,23 @@
+Critical/Logic Issues
+1. Appends Leaves, Does Not Overwrite
+
+    Behavior:
+    This code adds the new leaves to the existing leaves array for the user ($push with $each), rather than replacing or updating existing leaves.
+
+    Is this a problem?
+    No, if your intent is to always append new leave applications and never update or deduplicate existing ones.
+
+    Potential issue:
+    If a user applies for the same leave twice (same date/id), you will have duplicates unless you enforce uniqueness elsewhere.
+
+
+
+Additional Notes (Not Issues)
+
+    No duplicate/consistency checks:
+    You do not check for duplicate usernames or existing leave docs on registration.
+    Not a problem unless you want to enforce uniqueness at the application level (MongoDB can enforce unique indexes).
+
+    No transaction/rollback on partial failure:
+    If employee creation succeeds but leave doc creation fails (or vice versa), you may have partial data.
+    Not a problem unless atomicity is required for your use case.

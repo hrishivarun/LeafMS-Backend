@@ -13,21 +13,22 @@ import (
 // ============================================================================
 // ============================================================================
 func HandleViewLeaveApplications(w http.ResponseWriter, r *http.Request) {
-	var filter models.ViewApplications
-	if err := service.DecodeJson(r.Body, &filter); err != nil {
+	var viewReq models.ViewApplicationsReq
+	if err := service.DecodeJson(r.Body, &viewReq); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	if err := service.ValidateRequest(filter); err != nil {
+	if err := service.ValidateRequest(viewReq); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if loggedUsername, _ := r.Context().Value("username").(string); loggedUsername != filter.ApproverName {
-		http.Error(w, "You do not have access to this API! stop messing bruv", http.StatusUnauthorized)
+	loggedUsername, _ := r.Context().Value("username").(string)
+	if !service.ValidateApprover(viewReq.Username, loggedUsername) {
+		http.Error(w, "You do not have access to check this user's information! stop messing bruv", http.StatusUnauthorized)
 		return
 	}
 
-	data, err := service.ViewLeaveApplications(filter)
+	data, err := service.ViewLeaveApplications(viewReq, loggedUsername)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
