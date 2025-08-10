@@ -29,6 +29,7 @@ type LeaveInfo struct {
 	Type      LeaveType          `bson:"type" json:"type" validate:"required"`
 	StartDate time.Time          `bson:"startDate" json:"startDate" validate:"required"`
 	EndDate   time.Time          `bson:"endDate" json:"endDate" validate:"required"`
+	DaysCount int                `bson:"daysCount" json:"daysCount"`
 	Status    LeaveStatus        `bson:"status" json:"status" validate:"required"`
 	Reason    string             `bson:"reason" json:"reason"`
 	CreatedAt time.Time          `bson:"createdAt" json:"createdAt"`
@@ -45,4 +46,20 @@ type LeaveInfo struct {
 type LeaveDoc struct {
 	Username string      `bson:"username" json:"username" validate:"required"`
 	Leaves   []LeaveInfo `bson:"leaves" json:"leaves" validate:"required"`
+}
+type LeaveInfos []LeaveInfo
+
+// Method on slice of LeaveInfo to calculate days count for each
+func CalculateDaysCount(leaves *[]LeaveInfo) int {
+	var totalCount int
+	for i := range *leaves {
+		// Calculate total days including both start and end date
+		days := int((*leaves)[i].EndDate.Sub((*leaves)[i].StartDate).Hours()/24) + 1
+		if days < 0 {
+			days = 0 // in case invalid range given
+		}
+		(*leaves)[i].DaysCount = days
+		totalCount += days
+	}
+	return totalCount
 }

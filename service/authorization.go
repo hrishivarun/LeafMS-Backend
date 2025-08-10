@@ -47,7 +47,7 @@ func ValidateAdminCred(userToAuthorize models.Employee) (models.Employee, models
 	}
 	data, err := database.DbConn.FindOne("employees", bson.D{
 		{Key: "username", Value: Admin},
-		{Key: "password", Value: userToAuthorize.Password}})
+		{Key: "password", Value: userToAuthorize.Password}}, nil)
 	if err != nil {
 		loginInfo.Status = http.StatusUnauthorized
 		log.SetPrefix("WARNING: ")
@@ -87,7 +87,7 @@ func ValidateCred(userToAuthorize models.LoginReq) models.LoginInfo {
 	}
 	data, err := database.DbConn.FindOne("employees", bson.D{
 		{Key: "username", Value: userToAuthorize.Username},
-		{Key: "password", Value: userToAuthorize.Password}})
+		{Key: "password", Value: userToAuthorize.Password}}, nil)
 	if err != nil {
 		loginInfo.Status = http.StatusUnauthorized
 		log.SetPrefix("WARNING: ")
@@ -125,7 +125,7 @@ func ValidateApprover(employeeUsername *string, approverUsername string) bool {
 	if employeeUsername == nil {
 		return true
 	}
-	applierInfoRaw, err := database.DbConn.FindOne("employees", bson.D{{Key: "username", Value: *employeeUsername}})
+	applierInfoRaw, err := database.DbConn.FindOne("employees", bson.D{{Key: "username", Value: *employeeUsername}}, nil)
 	if err != nil {
 		return false
 	}

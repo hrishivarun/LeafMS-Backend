@@ -76,6 +76,9 @@ func HandleRegisterEmployee(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
+	// need to populate the default Leaves capacity for the new Employee
+	newEmployee.LeavesCapacityLeft = models.CopyDefaultLeavesCapacity()
+
 	if err := service.ValidateRequest(newEmployee); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

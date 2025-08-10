@@ -48,6 +48,8 @@ func FilterHolidaysFromLeaveRequest(leaveApplication models.LeaveApplication) (m
 		leavesLackingWeekend = append(leavesLackingWeekend, leaveSlices...)
 	}
 
+	//we're sneakily filling up the days count of the leave request.. which the user didn't. Nay way, breaking Single Responsibility for the b oiss!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	models.CalculateDaysCount(&leavesLackingWeekend)
 	leaveApplication.Leaves = leavesLackingWeekend
 	return leaveApplication, nil
 }

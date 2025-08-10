@@ -3,6 +3,7 @@ package service
 import (
 	"LeafMS-BackEnd/database"
 	"LeafMS-BackEnd/models"
+	"errors"
 	"log"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -22,16 +23,54 @@ func ApplyForLeave(leaveApplication models.LeaveApplication) (*mongo.UpdateResul
 	}
 
 	if len(filteredLeaves.Leaves) > 0 {
-		opts := options.Update().SetUpsert(true)
+		//fetch the current
+		var employee models.Employee
+		projection := bson.M{"leavesCapacityLeft": 1}
+		projOpts := options.FindOne().SetProjection(projection)
+		leaveCountResult, err := database.DbConn.FindOne("employees", bson.D{{Key: "username", Value: filteredLeaves.Username}}, projOpts)
+		if err != nil {
+			log.SetPrefix("WARNING: ")
+			log.Println("I don't know mother fducker. the leave count result never returned from the database. deal with it.")
+			return nil, err
+		}
+		if err = bson.Unmarshal(leaveCountResult, &employee); err != nil {
+			log.SetPrefix("WARNING: ")
+			log.Println("Error in unmarshaling the leaveCount for employee:- ", filteredLeaves.Username)
+			return nil, err
+		}
+
+		//validation if every leave request is well under the current leave capacity
+		for _, leave := range filteredLeaves.Leaves {
+			if employee.LeavesCapacityLeft[string(leave.Type)] < leave.DaysCount {
+				log.SetPrefix("WARNING: ")
+				log.Println("Bluffing, haan? Nop Mister. You don't have this many leave days left. Go check your leave days count, you moiwkeohigftews")
+				return nil, errors.New("bluffing, haan? Nop Mister. You don't have this many leave days left. Go check your leave days count, you moiwkeohigftews")
+			}
+			employee.LeavesCapacityLeft[string(leave.Type)] -= leave.DaysCount
+		}
+
+		// updating the employee's leave count, although we should do it after fillin up the leaves
+		employeeUpdateResult, err := database.DbConn.UpdateOne(
+			"employee", bson.D{{Key: "username", Value: filteredLeaves.Username}},
+			bson.D{{Key: "$set", Value: bson.D{{Key: "leavesCapacityLeft", Value: employee.LeavesCapacityLeft}}}}, nil)
+		if err != nil {
+			log.SetPrefix("WARNING: ")
+			log.Println("Some issue in updating the total employee count", "Employee Username: ", filteredLeaves.Username)
+			return nil, err
+		}
+		log.Println("Updated employee leave count!! Employee: ", filteredLeaves.Username, "\nLeaves Count Update Result:", employeeUpdateResult)
+
+		// finally!!! insert the leave applications in the DB!
 		result, err := database.DbConn.UpdateOne("leaves",
 			bson.D{
 				{Key: "username", Value: filteredLeaves.Username}},
 			bson.D{
 				{Key: "$push", Value: bson.D{
 					{Key: "leaves", Value: bson.D{
-						{Key: "$each", Value: filteredLeaves.Leaves}}}}}}, opts)
+						{Key: "$each", Value: filteredLeaves.Leaves}}}}}}, nil)
 
 		if err != nil {
+			log.SetPrefix("WARNING: ")
 			log.Println("Encountered error while persisting applied leaves in Database. Err : ", err)
 			return nil, err
 		}
@@ -97,7 +136,7 @@ func ViewLeaves(viewReq models.ViewApplicationsReq) ([]models.LeaveInfo, error) 
 // ============================================================================
 // ============================================================================
 func ViewTeamLeaveInfo(employeeUsername string, viewReq models.ViewApplicationsReq) ([]models.LeaveInfo, error) {
-	userInfoRaw, err := database.DbConn.FindOne("employees", bson.D{{Key: "username", Value: employeeUsername}})
+	userInfoRaw, err := database.DbConn.FindOne("employees", bson.D{{Key: "username", Value: employeeUsername}}, nil)
 	if err != nil {
 		return nil, err
 	}

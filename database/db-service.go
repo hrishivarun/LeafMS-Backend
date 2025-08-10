@@ -79,11 +79,11 @@ func (db Database) InsertMany(collectionName string, document []any) (*mongo.Ins
 	return result, nil
 }
 
-func (db Database) FindOne(collectionName string, filter bson.D) (bson.Raw, error) {
+func (db Database) FindOne(collectionName string, filter bson.D, findOptions *options.FindOneOptions) (bson.Raw, error) {
 	var data bson.Raw
 
 	collection := db.Database.Collection(collectionName)
-	err := collection.FindOne(db.Context, filter).Decode(&data)
+	err := collection.FindOne(db.Context, filter, findOptions).Decode(&data)
 	if err != nil {
 		log.SetPrefix("WARNING: ")
 		log.Println("The FindOne query did not return a result. Error:-\n\t", err)
