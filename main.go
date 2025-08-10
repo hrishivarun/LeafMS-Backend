@@ -30,6 +30,7 @@ func main() {
 
 	authRoute := routes.NewRoute().Subrouter()
 	authRoute.Use(ctrlr.HandleValidateAuth)
+	authRoute.HandleFunc("/view-profile", ctrlr.HandleViewProfile).Methods("GET")
 	authRoute.HandleFunc("/apply-leave", ctrlr.HandleApply).Methods("POST")
 	authRoute.HandleFunc("/cancel-leave", ctrlr.HandleCancelLeave).Methods("POST")
 	authRoute.HandleFunc("/view-leaves", ctrlr.HandleViewLeaves).Methods("GET")
@@ -37,9 +38,6 @@ func main() {
 	authRoute.HandleFunc("/view-applications", ctrlr.HandleViewLeaveApplications).Methods("GET")
 	authRoute.HandleFunc("/approve-leave", ctrlr.HandleLeaveApproval).Methods("PATCH")
 	authRoute.HandleFunc("/view-holidays", ctrlr.HandleViewHolidays).Methods("GET")
-	// a `/me?` api for personal details?
-
-	// delete holiday?
 
 	http.ListenAndServe(":8080", routes)
 

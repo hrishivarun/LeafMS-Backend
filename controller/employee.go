@@ -2,18 +2,51 @@ package controller
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
+	"LeafMS-BackEnd/database"
 	models "LeafMS-BackEnd/models"
 	"LeafMS-BackEnd/service"
+
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // ============================================================================
+// ============================================================================
+// handle `profile info`
+// ============================================================================
+// ============================================================================
+func HandleViewProfile(w http.ResponseWriter, r *http.Request) {
+	var employee models.Employee
+	loggedUsername, _ := r.Context().Value("username").(string)
+
+	rawData, err := database.DbConn.FindOne("employees", bson.D{{Key: "username", Value: loggedUsername}}, nil)
+	if err != nil {
+		http.Error(w, "Didn't find shit for username:\n"+loggedUsername+"\nError recieved:\n"+fmt.Sprintln(err), http.StatusInternalServerError)
+		return
+	}
+	if err := bson.Unmarshal(rawData, &employee); err != nil {
+		http.Error(w, "Something's up with either the data fetched, and believe me, we did fetch data! Or something with the struct for that data. RawData:\n"+
+			string(rawData), http.StatusInternalServerError)
+		return
+	}
+	response, err := json.MarshalIndent(employee, "", " ")
+	if err != nil {
+		http.Error(w, "Uugghhh. SomanyErrs. There was problem in converting your profile data to json?? WTF?:\n"+fmt.Sprintln(err), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(response)
+}
+
 // ============================================================================
 // handle `leave apply`
 // ============================================================================
 // ============================================================================
 func HandleApply(w http.ResponseWriter, r *http.Request) {
+	// ===========================================================================
 	var leaveApplication models.LeaveApplication
 	if err := service.DecodeJson(r.Body, &leaveApplication); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
